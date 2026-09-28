@@ -14,6 +14,13 @@ npm install github:mavidasnc/hub-auth#semver:^1.0.0
 
 `npm update @mavida/hub-auth` prende l'ultimo tag compatibile. La cartella `dist/` è committata nei tag di release: non serve alcuna fase di build al momento dell'installazione da git.
 
+**CI/deploy:** `npm ci` in un workflow deve poter clonare questo repository. hub-auth è pubblico, ma npm normalizza *sempre* il `resolved` di una dipendenza git GitHub-hosted nel lockfile come `git+ssh://git@github.com/...` — anche dichiarandola con `git+https://` in `package.json` — e un runner CI senza chiave SSH configurata fallisce con `Permission denied (publickey)`. Prima di `npm ci`, ogni workflow di deploy deve avere questo step (una tantum, forza git a usare https, che per un repo pubblico non richiede credenziali):
+
+```yaml
+- name: Forza HTTPS per le dipendenze git di GitHub
+  run: git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
+```
+
 ## Struttura
 
 - **`@mavida/hub-auth`** — core headless, nessuna dipendenza da React: `createHubAuth()`.
