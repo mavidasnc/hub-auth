@@ -279,6 +279,20 @@ export function createHubAuth(config) {
             set({ loading: false });
         }
     }
+    /**
+     * Adotta una sessione ottenuta da un meccanismo diverso da otp-verify (es.
+     * lo scambio di un magic link via /access-links/exchange): stesso
+     * trattamento di un login OTP riuscito, incluso il refresh immediato da
+     * GET /me per completare profilo, ruolo e tool.
+     *
+     * @param session.token - session_token già emesso da hub (Bearer valido)
+     * @param session.user - dati noti dell'utente (tipicamente solo user_id ed
+     *   email); i campi mancanti arrivano dal refresh successivo
+     */
+    async function adoptSession(session) {
+        openSession(session.token, { ...partialUser(session.user.user_id, session.user.email ?? null), ...session.user });
+        await refresh();
+    }
     // ── Integrazione con i client HTTP dei progetti ────────────────────────────
     function authHeaders() {
         return state.token ? { Authorization: `Bearer ${state.token}` } : {};
@@ -374,6 +388,7 @@ export function createHubAuth(config) {
         url,
         requestOtp,
         verifyOtp,
+        adoptSession,
         resetToEmail: () => set({ step: 'email', pendingEmail: '', otpRequestedAt: null }),
         refresh,
         logout,

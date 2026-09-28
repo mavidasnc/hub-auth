@@ -76,6 +76,16 @@ const api = axios.create({ baseURL: hubAuth.url('') });
 hubAuth.installAxiosInterceptors(api);
 ```
 
+## Sessioni da un meccanismo diverso da OTP (es. magic link)
+
+Un progetto può avere, oltre al login OTP, un modo alternativo di ottenere una sessione già emessa da hub (es. lo scambio di un magic link via `/access-links/exchange`). `adoptSession` la adotta con lo stesso trattamento di un login OTP riuscito:
+
+```ts
+const { session_token, user_id } = await exchangeAccessLink(linkToken) // endpoint specifico del progetto
+await hubAuth.adoptSession({ token: session_token, user: { user_id } })
+// hubAuth.getState().user è subito dopo completato da GET /me (email, role, plan, tools)
+```
+
 ## Personalizzazione
 
 - **Testi**: `<LoginScreen messages={{ sendCode: 'Invia', ... }} />` (o alle singole `EmailStep`/`OtpStep`). VoiceNote passa le stringhe di i18next.

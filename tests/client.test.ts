@@ -115,6 +115,34 @@ describe('login OTP', () => {
   });
 });
 
+describe('adoptSession (es. magic link)', () => {
+  it('apre la sessione col token dato e completa il profilo da /me', async () => {
+    const storage = memoryStorageAdapter();
+    const fetch = fakeFetch({ 'GET me': () => json(200, ME) });
+    const auth = createHubAuth({ baseUrl: BASE, storageKey: 'k', storage, fetch });
+
+    await auth.adoptSession({ token: 'link-tok', user: { user_id: 'u1', email: 'mario@esempio.com' } });
+
+    const state = auth.getState();
+    expect(state.token).toBe('link-tok');
+    expect(state.status).toBe('authenticated');
+    expect(state.user?.role).toBe('user');
+    expect(storedSession(storage, 'k')?.token).toBe('link-tok');
+  });
+
+  it('un profilo non ancora leggibile lascia comunque la sessione autenticata (offline)', async () => {
+    const auth = createHubAuth({
+      baseUrl: BASE, storageKey: 'k', storage: memoryStorageAdapter(),
+      fetch: vi.fn(async () => { throw new TypeError('Failed to fetch'); }),
+    });
+
+    await auth.adoptSession({ token: 'link-tok', user: { user_id: 'u1' } });
+
+    expect(auth.getState().status).toBe('authenticated');
+    expect(auth.getState().offline).toBe(true);
+  });
+});
+
 describe('boot con sessione salvata', () => {
   const saved = () => {
     const storage = memoryStorageAdapter();

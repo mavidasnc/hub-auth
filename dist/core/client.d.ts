@@ -114,6 +114,17 @@ export interface HubAuthClient {
     requestOtp(email: string): Promise<void>;
     /** Verifica il codice OTP e apre la sessione (lancia HubAuthError) */
     verifyOtp(code: string): Promise<void>;
+    /**
+     * Adotta una sessione ottenuta da un meccanismo diverso da otp-verify (es.
+     * lo scambio di un magic link): stesso trattamento di un login OTP
+     * riuscito, incluso il refresh da GET /me.
+     */
+    adoptSession(session: {
+        token: string;
+        user: Partial<HubUser> & {
+            user_id: string;
+        };
+    }): Promise<void>;
     /** Torna allo step email ("cambia email") */
     resetToEmail(): void;
     /** Ricarica utente e tool da GET /me */

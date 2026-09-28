@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0 — 2026-09-28
+
+- `adoptSession({token, user})`: adotta una sessione ottenuta da un meccanismo diverso da otp-verify (es. lo scambio di un magic link via `/access-links/exchange`), con lo stesso trattamento di un login OTP riuscito, incluso il refresh da `GET /me`. Aggiunto per carousel-generator, che ha sia login OTP sia accesso via link condiviso da un admin.
+
 ## 1.0.0 — 2026-09-28
 
 Prima versione. Libreria condivisa per il login OTP dei progetti hub, a sostituire le 9 implementazioni indipendenti (admin-dashboard, carousel-generator, log-dashboard, mavida-sheets, signup, social-planner-v2, voicenote, wandly, wp-fleet-manager).
