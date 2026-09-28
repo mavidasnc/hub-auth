@@ -1,0 +1,238 @@
+/*
+ * @mavida/hub-auth/ui.css — stile della schermata di login
+ *
+ * Niente @layer di proposito: il preflight di Tailwind 3 non è in un layer
+ * nativo e batterebbe qualsiasi regola "layered" (es. button { background:
+ * transparent }). Qui ogni selettore è una sola classe BEM (.hub-auth__*),
+ * quindi vince sui reset per elemento ma resta facile da sovrascrivere.
+ *
+ * Il tema si cambia sovrascrivendo le variabili --hub-auth-* su .hub-auth o
+ * su una classe passata con className, ad esempio:
+ *
+ *   .hub-auth.tema-scuro { --hub-auth-primary: #7c3aed; --hub-auth-bg: #0f172a; }
+ */
+.hub-auth {
+  --hub-auth-font: inherit;
+  --hub-auth-bg: #f3f4f6;
+  --hub-auth-card-bg: #ffffff;
+  --hub-auth-card-border: #e5e7eb;
+  --hub-auth-card-shadow: 0 10px 30px rgb(15 23 42 / 0.08);
+  --hub-auth-text: #111827;
+  --hub-auth-muted: #6b7280;
+  --hub-auth-input-bg: #f9fafb;
+  --hub-auth-input-border: #d1d5db;
+  --hub-auth-primary: #2563eb;
+  --hub-auth-primary-hover: #1d4ed8;
+  --hub-auth-primary-text: #ffffff;
+  --hub-auth-focus: rgb(37 99 235 / 0.35);
+  --hub-auth-error: #dc2626;
+  --hub-auth-info: #047857;
+  --hub-auth-notice-bg: #fef3c7;
+  --hub-auth-notice-text: #92400e;
+  --hub-auth-radius: 12px;
+  --hub-auth-radius-sm: 8px;
+  --hub-auth-card-width: 400px;
+
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 24px 16px;
+  background: var(--hub-auth-bg);
+  color: var(--hub-auth-text);
+  font-family: var(--hub-auth-font);
+}
+
+.hub-auth *,
+.hub-auth *::before,
+.hub-auth *::after {
+  box-sizing: border-box;
+}
+
+.hub-auth__card {
+  width: 100%;
+  max-width: var(--hub-auth-card-width);
+  padding: 32px 28px;
+  background: var(--hub-auth-card-bg);
+  border: 1px solid var(--hub-auth-card-border);
+  border-radius: var(--hub-auth-radius);
+  box-shadow: var(--hub-auth-card-shadow);
+}
+
+.hub-auth__header {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.hub-auth__logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.hub-auth__title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.hub-auth__subtitle {
+  margin: 6px 0 0;
+  color: var(--hub-auth-muted);
+  font-size: 0.9rem;
+}
+
+.hub-auth__form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.hub-auth__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.hub-auth__input,
+.hub-auth__otp-digit {
+  width: 100%;
+  border: 1px solid var(--hub-auth-input-border);
+  border-radius: var(--hub-auth-radius-sm);
+  background: var(--hub-auth-input-bg);
+  color: var(--hub-auth-text);
+  font: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.hub-auth__input {
+  padding: 10px 12px;
+}
+
+.hub-auth__input:focus,
+.hub-auth__otp-digit:focus {
+  outline: none;
+  border-color: var(--hub-auth-primary);
+  box-shadow: 0 0 0 3px var(--hub-auth-focus);
+}
+
+.hub-auth__otp {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.hub-auth__otp-digit {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 3rem;
+  height: 3rem;
+  padding: 0;
+  text-align: center;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.hub-auth__input:disabled,
+.hub-auth__otp-digit:disabled {
+  opacity: 0.6;
+}
+
+.hub-auth__button {
+  width: 100%;
+  padding: 11px 16px;
+  border: 0;
+  border-radius: var(--hub-auth-radius-sm);
+  background: var(--hub-auth-primary);
+  color: var(--hub-auth-primary-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.hub-auth__button:hover:not(:disabled) {
+  background: var(--hub-auth-primary-hover);
+}
+
+.hub-auth__button:focus-visible,
+.hub-auth__link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--hub-auth-focus);
+}
+
+.hub-auth__button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.hub-auth__links {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hub-auth__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--hub-auth-primary);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.hub-auth__link:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.hub-auth__link:disabled {
+  color: var(--hub-auth-muted);
+  cursor: default;
+}
+
+.hub-auth__text,
+.hub-auth__hint {
+  margin: 0;
+  color: var(--hub-auth-muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.hub-auth__hint {
+  font-size: 0.8rem;
+}
+
+.hub-auth__error,
+.hub-auth__info {
+  margin: 0;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.hub-auth__error {
+  color: var(--hub-auth-error);
+}
+
+.hub-auth__info {
+  color: var(--hub-auth-info);
+}
+
+.hub-auth__notice {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-radius: var(--hub-auth-radius-sm);
+  background: var(--hub-auth-notice-bg);
+  color: var(--hub-auth-notice-text);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.hub-auth__footer {
+  color: var(--hub-auth-muted);
+  font-size: 0.875rem;
+}
