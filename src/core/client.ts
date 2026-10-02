@@ -78,7 +78,7 @@ export interface AuthState {
 
 /** Configurazione del client */
 export interface HubAuthConfig {
-  /** Base URL di hub, con o senza slash finale (es. https://chat.mavida.com/wp-draft-generator/v1/) */
+  /** Base URL di hub, con o senza slash finale (es. https://hub.mavida.com/api/v1/) */
   baseUrl: string;
   /** Chiave con cui salvare la sessione (es. 'wandly:hub_session') */
   storageKey: string;
