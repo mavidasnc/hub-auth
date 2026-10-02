@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.0 — 2026-10-02
+
+Richiede hub ≥ 0.192.0 per le funzioni nuove (con hub più vecchi il client si comporta come prima, tranne che `otp-request` riceve il campo `link`, ignorato).
+
+- **Magic link nell'email OTP** (attivo di default, `magicLink: false` per disattivarlo): `requestOtp` invia `link: true`; se l'app è aperta da `#hub_otp=<token>` il token viene letto e rimosso subito dall'URL e lo stato diventa `step: 'link'`. Nuovi `verifyLink()` e `cancelLink()` (anche in `useHubAuth()`), nuovo componente `LinkStep` mostrato da `LoginScreen`: l'accesso richiede un clic di conferma, così gli scanner antiphishing non consumano il token. Un link non valido riporta al login con la notice `link_invalid`.
+- **SSO tra le app** (`sso: true`, spento di default): al login hub imposta il cookie host-only `__Host-mvd_sso`; all'avvio senza sessione locale il client lo scambia con una sessione propria (`POST sso/session`); mentre si attende il codice OTP riprova al ritorno sulla scheda. Se la CORS con credenziali non è configurata il login ripiega da solo sul flusso senza cookie.
+- **`logout(notice?, { global? })`**: con `sso` il logout dell'utente è globale di default (`POST logout?scope=global`: revoca l'SSO e le sessioni di tutte le app); i logout con notice restano locali. Un evento passato a `logout` (`onClick={logout}`) non viene più scambiato per una notice.
+- **Modifica visibile**: `AuthState.step` ora ammette anche `'link'` e `AuthNotice` anche `'link_invalid'` (nuova voce in `messages.notice`). Una UI di login propria che confronta `step` con `'email'`/`'otp'` va aggiornata, o deve usare `magicLink: false`.
+
 ## 1.1.0 — 2026-09-28
 
 - `adoptSession({token, user})`: adotta una sessione ottenuta da un meccanismo diverso da otp-verify (es. lo scambio di un magic link via `/access-links/exchange`), con lo stesso trattamento di un login OTP riuscito, incluso il refresh da `GET /me`. Aggiunto per carousel-generator, che ha sia login OTP sia accesso via link condiviso da un admin.

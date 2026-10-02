@@ -25,10 +25,15 @@ export const defaultMessages = {
     invalidCode: 'Codice non valido o scaduto.',
     networkError: 'Impossibile contattare il server. Controlla la connessione e riprova.',
     genericError: 'Si è verificato un errore. Riprova.',
+    linkIntro: "Hai aperto il link di accesso ricevuto via email. Vuoi entrare?",
+    linkConfirm: 'Accedi',
+    linkSigning: 'Accesso in corso...',
+    linkUseCode: 'Usa il codice invece',
     notice: {
         session_expired: 'Sessione scaduta: accedi di nuovo.',
         tool_not_enabled: 'Questo strumento non è abilitato per il tuo account.',
         trial_expired: 'Il periodo di prova è terminato.',
+        link_invalid: 'Il link di accesso non è valido, è scaduto o è già stato usato. Richiedi un nuovo codice.',
     },
 };
 /** Unisce i testi del progetto ai default (anche per le notice) */
@@ -46,7 +51,7 @@ export function format(template, values) {
 /**
  * Traduce un errore del client in un testo per l'utente.
  *
- * @param err - Errore lanciato da requestOtp / verifyOtp
+ * @param err - Errore lanciato da requestOtp / verifyOtp / verifyLink
  * @param messages - Testi correnti
  * @param step - Step in cui è avvenuto l'errore (per il 401 di otp-verify)
  */

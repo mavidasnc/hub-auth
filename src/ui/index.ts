@@ -6,6 +6,8 @@ export { LoginScreen } from './LoginScreen.js';
 export type { LoginScreenProps } from './LoginScreen.js';
 export { EmailStep } from './EmailStep.js';
 export type { EmailStepProps } from './EmailStep.js';
+export { LinkStep } from './LinkStep.js';
+export type { LinkStepProps } from './LinkStep.js';
 export { OtpStep } from './OtpStep.js';
 export type { OtpStepProps } from './OtpStep.js';
 export { OtpInput } from './OtpInput.js';

@@ -25,7 +25,7 @@ npm install github:mavidasnc/hub-auth#semver:^1.0.0
 
 - **`@mavida/hub-auth`** — core headless, nessuna dipendenza da React: `createHubAuth()`.
 - **`@mavida/hub-auth/react`** — `<HubAuthProvider>`, `useHubAuth()`, `<AuthGate>`.
-- **`@mavida/hub-auth/ui`** + **`@mavida/hub-auth/ui.css`** — `<LoginScreen>`, `<EmailStep>`, `<OtpStep>`, `<OtpInput>`.
+- **`@mavida/hub-auth/ui`** + **`@mavida/hub-auth/ui.css`** — `<LoginScreen>`, `<EmailStep>`, `<OtpStep>`, `<LinkStep>`, `<OtpInput>`.
 
 ## Uso rapido
 
@@ -85,6 +85,43 @@ const { session_token, user_id } = await exchangeAccessLink(linkToken) // endpoi
 await hubAuth.adoptSession({ token: session_token, user: { user_id } })
 // hubAuth.getState().user è subito dopo completato da GET /me (email, role, plan, tools)
 ```
+
+## Magic link nell'email OTP (1.2.0, hub ≥ 0.192.0)
+
+L'email col codice contiene anche il pulsante "Accedi con un clic", per non dover copiare il codice. È **attivo di default**: `requestOtp` chiede il link a hub (`link: true`), e il client gestisce il ritorno senza codice da scrivere.
+
+- Il token sta nel *fragment* dell'URL (`https://app.mavida.com/#hub_otp=...`): il browser non lo invia a nessun server, quindi non finisce nei log né nel `Referer`.
+- All'avvio il client lo legge e lo **rimuove subito** dall'URL; lo stato diventa `step: 'link'` e `<LoginScreen>` mostra una conferma ("Accedi"). Il link **non accede da solo**: serve il clic dell'utente, così gli scanner antiphishing dei client email (che aprono i link ed eseguono il JavaScript) non consumano il token monouso.
+- `verifyLink()` conferma l'accesso. Un link sconosciuto, scaduto o già usato non lancia: porta al login con la notice `link_invalid`. Errori di rete, 429 o 5xx vengono lanciati e il link resta riutilizzabile. `cancelLink()` ("Usa il codice invece") lo scarta.
+- Usare il link consuma anche il codice della stessa email, e viceversa.
+- L'email contiene il link solo se l'origine dell'app è registrata in `generations_tools.url` su hub; altrimenti resta il solo codice.
+- Con una UI di login **propria** (senza `<LoginScreen>`) va gestito `step === 'link'` con `verifyLink`/`cancelLink` di `useHubAuth()`, oppure disattivato con `magicLink: false`.
+
+## SSO tra le app (1.2.0, hub ≥ 0.192.0)
+
+Con `sso: true` un utente che ha fatto login su una app entra nelle altre senza rifare l'OTP. Hub imposta un cookie `__Host-mvd_sso` (host-only, `HttpOnly`, `Secure`, `SameSite=Lax`) che ogni app scambia con una propria sessione (`POST /sso/session`, con il `tool` dell'app: un tool non abilitato resta negato).
+
+```ts
+export const hubAuth = createHubAuth({
+  baseUrl: 'https://hub.mavida.com/api/v1/',   // stesso host per TUTTE le app
+  storageKey: 'log-dashboard:hub_session',
+  sso: true,
+});
+```
+
+Prerequisiti, tutti da rispettare prima di attivare `sso`:
+
+1. **Un solo host per hub.** Il cookie è host-only, quindi vale per un host solo: tutte le app devono usare lo stesso `baseUrl` (`https://hub.mavida.com/api/v1/`).
+2. **L'origine dell'app va in `SSO_ALLOWED_ORIGINS`** sul server hub (schema+host esatti, es. `https://log.mavida.com`) e va riavviato il servizio. Se manca, il login ripiega da solo sul flusso senza cookie (nessun SSO, ma nessun blocco).
+3. hub ≥ 0.192.0 con la migration 134 applicata.
+
+Comportamento:
+
+- All'avvio senza sessione locale lo stato resta `checking` (l'`AuthGate` mostra il loading) finché lo scambio non risponde; se non c'è sessione SSO si passa al login, senza avvisi. Se l'utente è in SSO ma non può usare questo tool, il login mostra la notice `tool_not_enabled`.
+- **`logout()` con `sso` è globale di default**: revoca anche la sessione SSO e le sessioni di tutte le altre app, altrimenti all'apertura successiva l'app rientrerebbe da sola. `logout(undefined, { global: false })` fa il solo logout locale. I logout con una notice (`tool_not_enabled`, `trial_expired`) restano sempre locali.
+- Le altre app scoprono la revoca alla prima chiamata autenticata (401 → logout già gestito), non istantaneamente.
+- Mentre si attende il codice OTP, se il magic link viene aperto in un'altra scheda dello stesso browser, al ritorno sulla scheda originale il client entra da solo.
+- La sessione SSO dura al massimo 7 giorni (`SSO_SESSION_TTL_HOURS` su hub, senza rinnovo) ed è legata al browser (se cambia lo User-Agent viene revocata).
 
 ## Personalizzazione
 

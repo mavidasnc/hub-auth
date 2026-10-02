@@ -41,7 +41,8 @@ describe('login OTP', () => {
     await auth.requestOtp('  Mario@Esempio.COM ');
 
     const body = JSON.parse(String(fetch.mock.calls[0][1]?.body));
-    expect(body).toEqual({ email: 'mario@esempio.com' });
+    // link: true = il client sa gestire il magic link dell'email (1.2.0)
+    expect(body).toEqual({ email: 'mario@esempio.com', link: true });
     expect(auth.getState().step).toBe('otp');
     expect(auth.getState().pendingEmail).toBe('mario@esempio.com');
     expect(auth.getState().otpRequestedAt).not.toBeNull();

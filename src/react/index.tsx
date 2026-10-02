@@ -31,6 +31,8 @@ export type UseHubAuthResult = AuthState & {
   isLoggedIn: boolean;
   requestOtp: HubAuthClient['requestOtp'];
   verifyOtp: HubAuthClient['verifyOtp'];
+  verifyLink: HubAuthClient['verifyLink'];
+  cancelLink: HubAuthClient['cancelLink'];
   resetToEmail: HubAuthClient['resetToEmail'];
   refresh: HubAuthClient['refresh'];
   logout: HubAuthClient['logout'];
@@ -46,6 +48,8 @@ export function useHubAuth(): UseHubAuthResult {
     isLoggedIn: state.status === 'authenticated',
     requestOtp: client.requestOtp,
     verifyOtp: client.verifyOtp,
+    verifyLink: client.verifyLink,
+    cancelLink: client.cancelLink,
     resetToEmail: client.resetToEmail,
     refresh: client.refresh,
     logout: client.logout,

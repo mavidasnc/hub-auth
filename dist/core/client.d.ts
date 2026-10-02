@@ -15,6 +15,13 @@
  *   dalla richiesta: un OTP sbagliato o una risposta arrivata dopo un nuovo
  *   login non sloggano nessuno
  * - il logout cattura il token PRIMA della pulizia locale, poi lo revoca su hub
+ *
+ * Dalla 1.2.0:
+ * - SSO (opzione `sso`): hub imposta un cookie host-only al login; un'app aperta
+ *   senza sessione locale lo scambia con una propria sessione (POST /sso/session)
+ * - magic link (opzione `magicLink`, attiva di default): il link dell'email OTP
+ *   porta il token nel fragment (#hub_otp=...); l'app lo toglie subito dall'URL e
+ *   lo usa solo dopo la conferma esplicita dell'utente (verifyLink)
  */
 import { type StorageAdapter } from './storage.js';
 /**
@@ -29,8 +36,9 @@ export type AuthStatus = 'checking' | 'anonymous' | 'authenticated';
  * - session_expired: 401 su una chiamata autenticata
  * - tool_not_enabled: 403 ToolNotEnabled (tool non abilitato per l'account)
  * - trial_expired: 403 TrialExpired (scadenza dell'account superata)
+ * - link_invalid: il magic link dell'email è sconosciuto, scaduto o già usato
  */
-export type AuthNotice = 'session_expired' | 'tool_not_enabled' | 'trial_expired';
+export type AuthNotice = 'session_expired' | 'tool_not_enabled' | 'trial_expired' | 'link_invalid';
 /** Utente della sessione, come restituito da GET /me */
 export interface HubUser {
     user_id: string;
@@ -50,8 +58,8 @@ export interface AuthState {
     user: HubUser | null;
     token: string | null;
     notice: AuthNotice | null;
-    /** Step del flusso di login */
-    step: 'email' | 'otp';
+    /** Step del flusso di login ('link' = aperto un magic link, in attesa della conferma) */
+    step: 'email' | 'otp' | 'link';
     /** Email a cui è stato chiesto il codice (step 'otp') */
     pendingEmail: string;
     /** Timestamp (ms) dell'ultima richiesta di codice riuscita, per il cooldown del reinvio */
@@ -69,6 +77,21 @@ export interface HubAuthConfig {
     storageKey: string;
     /** Chiave del tool (generations_tools.key): inviata a otp-verify e a GET /me */
     tool?: string;
+    /**
+     * SSO a cookie tra le app (default: spento). Con `true`: al login hub imposta
+     * il cookie SSO, all'avvio senza sessione locale si tenta lo scambio del
+     * cookie e `logout()` è globale (esce da tutte le app) se non indicato
+     * diversamente. Richiede che l'origine dell'app sia in SSO_ALLOWED_ORIGINS su
+     * hub e che baseUrl punti all'host canonico di hub. Se la CORS con credenziali
+     * non è configurata il login ripiega da solo sul flusso senza cookie.
+     */
+    sso?: boolean;
+    /**
+     * Magic link dell'email OTP (default: attivo). Con `false` il client non lo
+     * richiede a hub e ignora `#hub_otp=` nell'URL: da usare solo se il progetto
+     * ha una UI di login propria che non gestisce lo step 'link'.
+     */
+    magicLink?: boolean;
     /** Storage della sessione (default: localStorage) */
     storage?: StorageAdapter;
     /**
@@ -115,6 +138,15 @@ export interface HubAuthClient {
     /** Verifica il codice OTP e apre la sessione (lancia HubAuthError) */
     verifyOtp(code: string): Promise<void>;
     /**
+     * Conferma l'accesso con il magic link aperto (step 'link') e apre la sessione.
+     * Un link sconosciuto, scaduto o già usato non lancia: porta allo step email
+     * con la notice 'link_invalid'. Gli altri errori (rete, 429, 5xx) vengono
+     * lanciati e il link resta utilizzabile per un nuovo tentativo.
+     */
+    verifyLink(): Promise<void>;
+    /** Scarta il magic link e torna allo step email ("usa il codice") */
+    cancelLink(): void;
+    /**
      * Adotta una sessione ottenuta da un meccanismo diverso da otp-verify (es.
      * lo scambio di un magic link): stesso trattamento di un login OTP
      * riuscito, incluso il refresh da GET /me.
@@ -129,8 +161,16 @@ export interface HubAuthClient {
     resetToEmail(): void;
     /** Ricarica utente e tool da GET /me */
     refresh(): Promise<void>;
-    /** Logout esplicito: pulizia locale e revoca della sessione su hub */
-    logout(notice?: AuthNotice): void;
+    /**
+     * Logout: pulizia locale e revoca della sessione su hub.
+     * Con `sso` attivo il logout richiesto dall'utente (senza `notice`) è globale
+     * di default: revoca anche la sessione SSO, altrimenti alla prossima apertura
+     * l'app rientrerebbe da sola. I logout con `notice` (tool non abilitato, prova
+     * scaduta) restano locali. `{ global: false }` forza il solo logout locale.
+     */
+    logout(notice?: AuthNotice, options?: {
+        global?: boolean;
+    }): void;
     /** Pulizia solo locale della sessione */
     forceLogout(notice?: AuthNotice): void;
     /**

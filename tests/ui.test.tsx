@@ -162,3 +162,60 @@ describe('AuthGate', () => {
     expect(await screen.findByText('negato')).toBeTruthy();
   });
 });
+
+describe('LinkStep (magic link)', () => {
+  const TOKEN = 'B'.repeat(43);
+
+  /** Apre l'app dal link dell'email: il token è nel fragment */
+  function setupLink(verify: () => Response) {
+    window.history.replaceState(null, '', `/#hub_otp=${TOKEN}`);
+    const fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input).replace(BASE, '');
+      if (path === 'otp-verify-link') return verify();
+      if (path.startsWith('me')) return json(200, ME);
+      throw new Error(`rotta non prevista: ${path}`);
+    });
+    const client = createHubAuth({ baseUrl: BASE, storageKey: 'ui-link', storage: memoryStorageAdapter(), fetch });
+    render(
+      <HubAuthProvider client={client}>
+        <AuthGate fallback={<LoginScreen title="App" />}><p>contenuto protetto</p></AuthGate>
+      </HubAuthProvider>,
+    );
+    return { fetch, client };
+  }
+
+  afterEach(() => window.history.replaceState(null, '', '/'));
+
+  it('mostra la conferma e non accede finché l\'utente non preme il pulsante', async () => {
+    const { fetch } = setupLink(() => json(200, { user_id: 'u1', session_token: 'tok' }));
+
+    expect(await screen.findByRole('button', { name: 'Accedi' })).toBeTruthy();
+    expect(screen.queryByText('contenuto protetto')).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('al clic apre la sessione e mostra il contenuto', async () => {
+    setupLink(() => json(200, { user_id: 'u1', email: 'mario@esempio.com', session_token: 'tok' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Accedi' }));
+
+    expect(await screen.findByText('contenuto protetto')).toBeTruthy();
+  });
+
+  it('un link scaduto riporta al login con l\'avviso', async () => {
+    setupLink(() => json(401, { error: 'Link non valido o scaduto.' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Accedi' }));
+
+    expect((await screen.findByRole('status')).textContent).toContain('link di accesso non è valido');
+    expect(screen.getByLabelText('Email')).toBeTruthy();
+  });
+
+  it('"Usa il codice invece" torna al form email', async () => {
+    setupLink(() => json(200, { user_id: 'u1', session_token: 'tok' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Usa il codice invece' }));
+
+    expect(screen.getByLabelText('Email')).toBeTruthy();
+  });
+});

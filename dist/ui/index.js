@@ -3,6 +3,7 @@
  */
 export { LoginScreen } from './LoginScreen.js';
 export { EmailStep } from './EmailStep.js';
+export { LinkStep } from './LinkStep.js';
 export { OtpStep } from './OtpStep.js';
 export { OtpInput } from './OtpInput.js';
 export { defaultMessages, mergeMessages, format, errorMessage } from './messages.js';

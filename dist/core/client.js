@@ -15,6 +15,13 @@
  *   dalla richiesta: un OTP sbagliato o una risposta arrivata dopo un nuovo
  *   login non sloggano nessuno
  * - il logout cattura il token PRIMA della pulizia locale, poi lo revoca su hub
+ *
+ * Dalla 1.2.0:
+ * - SSO (opzione `sso`): hub imposta un cookie host-only al login; un'app aperta
+ *   senza sessione locale lo scambia con una propria sessione (POST /sso/session)
+ * - magic link (opzione `magicLink`, attiva di default): il link dell'email OTP
+ *   porta il token nel fragment (#hub_otp=...); l'app lo toglie subito dall'URL e
+ *   lo usa solo dopo la conferma esplicita dell'utente (verifyLink)
  */
 import { errorFromBody, HubAuthError, networkError } from './errors.js';
 import { localStorageAdapter } from './storage.js';
@@ -68,6 +75,35 @@ function sessionFromStorage(raw) {
     const obj = raw;
     return obj.v === 1 && typeof obj.token === 'string' && obj.token ? obj : null;
 }
+/** Parametro del fragment che porta il token del magic link (#hub_otp=...) */
+const LINK_PARAM = 'hub_otp';
+/** Forma attesa del token del magic link (secrets.token_urlsafe(32) lato hub) */
+const LINK_TOKEN_RE = /^[A-Za-z0-9_-]{20,128}$/;
+/**
+ * Legge il token del magic link dal fragment dell'URL e lo RIMUOVE subito
+ * (history.replaceState): così non resta nella barra, nella cronologia né in
+ * una schermata condivisa. Il fragment non viene mai inviato a nessun server.
+ *
+ * @returns il token se presente e ben formato, altrimenti null
+ */
+function takeLinkFromUrl() {
+    if (typeof window === 'undefined' || !window.location?.hash)
+        return null;
+    const params = new URLSearchParams(window.location.hash.slice(1));
+    const token = params.get(LINK_PARAM);
+    if (token === null)
+        return null;
+    params.delete(LINK_PARAM);
+    const rest = params.toString();
+    try {
+        const { pathname, search } = window.location;
+        window.history.replaceState(window.history.state, '', `${pathname}${search}${rest ? `#${rest}` : ''}`);
+    }
+    catch {
+        // history non disponibile: il token resta nell'URL ma non viene comunque inviato a nessuno
+    }
+    return LINK_TOKEN_RE.test(token) ? token : null;
+}
 /**
  * Crea il client di autenticazione.
  *
@@ -79,6 +115,8 @@ export function createHubAuth(config) {
     const base = config.baseUrl.endsWith('/') ? config.baseUrl : `${config.baseUrl}/`;
     // fetch risolta a ogni chiamata: i test (e gli eventuali polyfill) possono sostituirla dopo la creazione
     const doFetch = (...args) => (config.fetch ?? globalThis.fetch)(...args);
+    // Il magic link è attivo di default; il token vive solo in memoria (mai nello stato osservabile)
+    let linkToken = config.magicLink === false ? null : takeLinkFromUrl();
     let state = {
         status: 'checking',
         user: null,
@@ -127,14 +165,18 @@ export function createHubAuth(config) {
     function url(path) {
         return /^https?:\/\//i.test(path) ? path : `${base}${path.replace(/^\/+/, '')}`;
     }
-    /** POST JSON su un endpoint pubblico di login; lancia HubAuthError sugli errori */
-    async function publicPost(path, body) {
+    /**
+     * POST JSON su un endpoint pubblico di login; lancia HubAuthError sugli errori.
+     * @param credentials - invia/riceve i cookie (serve a hub per impostare il cookie SSO)
+     */
+    async function publicPost(path, body, credentials = false) {
         let res;
         try {
             res = await doFetch(url(path), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
+                ...(credentials ? { credentials: 'include' } : {}),
             });
         }
         catch (err) {
@@ -144,6 +186,25 @@ export function createHubAuth(config) {
         if (!res.ok)
             throw errorFromBody(res.status, data);
         return data;
+    }
+    /**
+     * POST di un endpoint che apre la sessione (otp-verify, otp-verify-link).
+     * Con `sso` chiede anche il cookie SSO. Se l'origine dell'app non è ancora in
+     * SSO_ALLOWED_ORIGINS di hub, il browser blocca la richiesta con credenziali
+     * già al preflight (errore di rete, nulla è stato inviato): in quel caso si
+     * ripete una volta senza SSO, così una configurazione incompleta non impedisce il login.
+     */
+    async function loginPost(path, body) {
+        if (!config.sso)
+            return publicPost(path, body);
+        try {
+            return await publicPost(path, { ...body, sso: true }, true);
+        }
+        catch (err) {
+            if (!(err instanceof HubAuthError) || err.code !== 'NetworkError')
+                throw err;
+            return publicPost(path, body);
+        }
     }
     // ── Sessione ───────────────────────────────────────────────────────────────
     /** Apre la sessione in memoria e la persiste */
@@ -172,13 +233,21 @@ export function createHubAuth(config) {
             console.error('[hub-auth] onLogout ha lanciato un errore:', err);
         }
     }
-    function logout(notice) {
+    function logout(notice, options) {
+        // Un handler passato direttamente a onClick riceve un evento: non è una notice
+        const reason = typeof notice === 'string' ? notice : undefined;
+        // Globale solo con SSO attivo; di default lo è il logout dell'utente, non quello con notice
+        const global = !!config.sso && (options?.global ?? !reason);
         // Il token va catturato prima della pulizia locale per poterlo revocare
         const token = state.token;
-        forceLogout(notice);
+        forceLogout(reason);
         if (token) {
-            doFetch(url('logout'), { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-                .catch(() => undefined);
+            doFetch(url(global ? 'logout?scope=global' : 'logout'), {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                // Il cookie SSO viaggia (e viene cancellato) solo con le credenziali
+                ...(global ? { credentials: 'include' } : {}),
+            }).catch(() => undefined);
         }
     }
     function handleUnauthorized(usedToken) {
@@ -248,8 +317,10 @@ export function createHubAuth(config) {
         }
         set({ loading: true, notice: null });
         try {
-            await publicPost('otp-request', { email: normalized });
+            // link: true = questo client sa gestire il magic link (hub lo include nell'email)
+            await publicPost('otp-request', config.magicLink === false ? { email: normalized } : { email: normalized, link: true });
             set({ step: 'otp', pendingEmail: normalized, otpRequestedAt: Date.now() });
+            pollSsoWhileWaiting();
         }
         finally {
             set({ loading: false });
@@ -266,7 +337,7 @@ export function createHubAuth(config) {
             const body = { email, otp_code: otp };
             if (config.tool)
                 body.tool = config.tool;
-            const data = await publicPost('otp-verify', body);
+            const data = await loginPost('otp-verify', body);
             if (!data?.session_token || !data.user_id) {
                 throw new HubAuthError('Risposta non valida dal server.', 200, 'InvalidResponse');
             }
@@ -278,6 +349,123 @@ export function createHubAuth(config) {
         finally {
             set({ loading: false });
         }
+    }
+    async function verifyLink() {
+        const token = linkToken;
+        if (!token)
+            throw new HubAuthError('Link di accesso non valido.', 400, 'InvalidLink');
+        set({ loading: true, notice: null });
+        try {
+            const body = { token };
+            if (config.tool)
+                body.tool = config.tool;
+            const data = await loginPost('otp-verify-link', body);
+            if (!data?.session_token || !data.user_id) {
+                throw new HubAuthError('Risposta non valida dal server.', 200, 'InvalidResponse');
+            }
+            linkToken = null;
+            openSession(data.session_token, partialUser(data.user_id, data.email ?? null));
+            set({ step: 'email', pendingEmail: '', otpRequestedAt: null });
+            await refresh();
+        }
+        catch (err) {
+            // Link morto (401: sconosciuto, scaduto, già usato) o accesso negato: inutile
+            // riprovare, si torna al login con l'avviso. Rete, 429 e 5xx vengono lanciati
+            // e il link resta valido per un nuovo tentativo.
+            if (err instanceof HubAuthError) {
+                const notice = err.code === 'ToolNotEnabled' ? 'tool_not_enabled'
+                    : err.code === 'TrialExpired' ? 'trial_expired'
+                        : err.status === 401 ? 'link_invalid'
+                            : null;
+                if (notice) {
+                    linkToken = null;
+                    set({ step: 'email', notice });
+                    return;
+                }
+            }
+            throw err;
+        }
+        finally {
+            set({ loading: false });
+        }
+    }
+    function cancelLink() {
+        linkToken = null;
+        set({ step: 'email', notice: null });
+    }
+    // ── SSO ────────────────────────────────────────────────────────────────────
+    /**
+     * Scambia il cookie SSO con una sessione di questa app (POST /sso/session).
+     *
+     * @param silent - true: non tocca stato né avvisi se non riesce (usato mentre
+     *   si attende il codice OTP); false: all'avvio, dove il fallimento porta al
+     *   login (con l'avviso se l'utente è in SSO ma non può usare questo tool)
+     * @returns true se è stata aperta una sessione
+     */
+    async function trySso(silent = false) {
+        let res;
+        try {
+            res = await doFetch(url('sso/session'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(config.tool ? { tool: config.tool } : {}),
+            });
+        }
+        catch {
+            // Rete assente o CORS non configurata: nessuna sessione SSO utilizzabile
+            if (!silent && !state.token)
+                set({ status: 'anonymous' });
+            return false;
+        }
+        const data = (await res.json().catch(() => null));
+        // Un login (OTP, link o altro) è avvenuto nel frattempo: la risposta non serve più
+        if (state.token)
+            return false;
+        if (res.ok && data?.session_token && data.user_id) {
+            openSession(data.session_token, partialUser(data.user_id, data.email ?? null));
+            await refresh();
+            return true;
+        }
+        if (!silent) {
+            const error = errorFromBody(res.status, data);
+            const notice = error.code === 'ToolNotEnabled' ? 'tool_not_enabled'
+                : error.code === 'TrialExpired' ? 'trial_expired'
+                    : null;
+            set({ status: 'anonymous', notice });
+        }
+        return false;
+    }
+    /**
+     * Mentre si attende il codice OTP, se l'utente apre il magic link in un'altra
+     * scheda dello stesso browser (che crea la sessione SSO), al ritorno su questa
+     * scheda si prova a entrare da soli, senza far digitare il codice.
+     * Il listener si toglie da solo quando lo step non è più 'otp'.
+     */
+    let ssoPollAttached = false;
+    function pollSsoWhileWaiting() {
+        if (!config.sso || ssoPollAttached || typeof window === 'undefined' || typeof document === 'undefined')
+            return;
+        ssoPollAttached = true;
+        const detach = () => {
+            window.removeEventListener('focus', check);
+            document.removeEventListener('visibilitychange', check);
+            ssoPollAttached = false;
+        };
+        function check() {
+            if (state.step !== 'otp' || state.token) {
+                detach();
+                return;
+            }
+            if (document.visibilityState === 'hidden' || state.loading)
+                return;
+            void trySso(true).then((ok) => {
+                if (ok)
+                    set({ step: 'email', pendingEmail: '', otpRequestedAt: null });
+            });
+        }
+        window.addEventListener('focus', check);
+        document.addEventListener('visibilitychange', check);
     }
     /**
      * Adotta una sessione ottenuta da un meccanismo diverso da otp-verify (es.
@@ -337,9 +525,21 @@ export function createHubAuth(config) {
     /** Applica la sessione letta dallo storage (o nessuna) e avvia la verifica */
     function boot(session, fromLegacy) {
         if (!session) {
+            // Aperto da un magic link: si attende la conferma dell'utente (step 'link')
+            if (linkToken) {
+                set({ status: 'anonymous', step: 'link' });
+                return;
+            }
+            // SSO: lo stato resta 'checking' finché lo scambio del cookie non ha risposto
+            if (config.sso) {
+                void trySso();
+                return;
+            }
             set({ status: 'anonymous' });
             return;
         }
+        // Sessione già presente: un eventuale magic link aperto in più non serve
+        linkToken = null;
         openSession(session.token, session.user);
         if (fromLegacy)
             persist();
@@ -388,6 +588,8 @@ export function createHubAuth(config) {
         url,
         requestOtp,
         verifyOtp,
+        verifyLink,
+        cancelLink,
         adoptSession,
         resetToEmail: () => set({ step: 'email', pendingEmail: '', otpRequestedAt: null }),
         refresh,

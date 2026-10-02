@@ -22,6 +22,8 @@ export type UseHubAuthResult = AuthState & {
     isLoggedIn: boolean;
     requestOtp: HubAuthClient['requestOtp'];
     verifyOtp: HubAuthClient['verifyOtp'];
+    verifyLink: HubAuthClient['verifyLink'];
+    cancelLink: HubAuthClient['cancelLink'];
     resetToEmail: HubAuthClient['resetToEmail'];
     refresh: HubAuthClient['refresh'];
     logout: HubAuthClient['logout'];

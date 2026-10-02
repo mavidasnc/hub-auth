@@ -6,6 +6,7 @@
 import type { ReactNode } from 'react';
 import { useHubAuth } from '../react/index.js';
 import { EmailStep } from './EmailStep.js';
+import { LinkStep } from './LinkStep.js';
 import { OtpStep } from './OtpStep.js';
 import { mergeMessages, type HubAuthMessages } from './messages.js';
 
@@ -47,9 +48,9 @@ export function LoginScreen({
           <p className="hub-auth__notice" role="status">{messages.notice[notice]}</p>
         )}
 
-        {step === 'email'
-          ? <EmailStep messages={custom} />
-          : <OtpStep messages={custom} resendCooldown={resendCooldown} />}
+        {step === 'email' && <EmailStep messages={custom} />}
+        {step === 'otp' && <OtpStep messages={custom} resendCooldown={resendCooldown} />}
+        {step === 'link' && <LinkStep messages={custom} />}
       </div>
       {footer && <div className="hub-auth__footer">{footer}</div>}
     </div>

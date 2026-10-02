@@ -25,6 +25,10 @@ export interface HubAuthMessages {
     invalidCode: string;
     networkError: string;
     genericError: string;
+    linkIntro: string;
+    linkConfirm: string;
+    linkSigning: string;
+    linkUseCode: string;
     notice: Record<AuthNotice, string>;
 }
 export declare const defaultMessages: HubAuthMessages;
@@ -35,8 +39,8 @@ export declare function format(template: string, values: Record<string, string |
 /**
  * Traduce un errore del client in un testo per l'utente.
  *
- * @param err - Errore lanciato da requestOtp / verifyOtp
+ * @param err - Errore lanciato da requestOtp / verifyOtp / verifyLink
  * @param messages - Testi correnti
  * @param step - Step in cui è avvenuto l'errore (per il 401 di otp-verify)
  */
-export declare function errorMessage(err: unknown, messages: HubAuthMessages, step: 'email' | 'otp'): string;
+export declare function errorMessage(err: unknown, messages: HubAuthMessages, step: 'email' | 'otp' | 'link'): string;

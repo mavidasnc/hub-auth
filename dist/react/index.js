@@ -31,6 +31,8 @@ export function useHubAuth() {
         isLoggedIn: state.status === 'authenticated',
         requestOtp: client.requestOtp,
         verifyOtp: client.verifyOtp,
+        verifyLink: client.verifyLink,
+        cancelLink: client.cancelLink,
         resetToEmail: client.resetToEmail,
         refresh: client.refresh,
         logout: client.logout,
