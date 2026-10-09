@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.10.0 — 2026-10-09
+
+- **`asideLink`** (`{ href, label }`) in `LoginScreen`: pulsante (CTA) nel pannello di default, sotto l'immagine, ad es. "Approfondisci" verso la pagina `/about/` dell'app. È un link normale (`<a class="hub-auth__aside-cta">`, con freccia che si sposta al passaggio del mouse), quindi visibile e seguibile anche dai motori di ricerca. Colori dal tema (`--hub-auth-primary`). Da solo fa comparire il pannello; con un `aside` personalizzato è ignorato. Ordine nel pannello: logo, titolo, descrizione, avviso, immagine, pulsante.
+
 ## 1.9.0 — 2026-10-09
 
 - **`EcosystemMenu` con `variant="inline"`**: elenco nel flusso sotto il pulsante a tutta larghezza, senza frasi (restano nel tooltip) e senza chiusura al clic fuori, che eredita colori e font del contenitore. Serve alle sidebar con `overflow: hidden` (Wandly, WooSync, Fleet), dove la tendina assoluta della 1.8.0 verrebbe tagliata. Il default resta `dropdown`. I link dell'elenco hanno ora `title` con la frase dell'app.

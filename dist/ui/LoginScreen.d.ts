@@ -28,6 +28,13 @@ export interface AsideImage {
     width?: number;
     height?: number;
 }
+/** Pulsante sotto l'immagine del pannello (es. "Approfondisci" verso la pagina about) */
+export interface AsideLink {
+    /** Destinazione del link (es. '/about/') */
+    href: string;
+    /** Testo del pulsante (es. 'Approfondisci') */
+    label: string;
+}
 export interface LoginScreenProps {
     /** Titolo della card (es. nome dell'app) */
     title?: ReactNode;
@@ -61,9 +68,15 @@ export interface LoginScreenProps {
      */
     asideImage?: AsideImage;
     /**
+     * Pulsante (CTA) nel pannello di default, sotto l'immagine (dalla 1.10.0): un link
+     * normale, visibile e seguibile anche dai motori di ricerca. Da solo basta a far
+     * comparire il pannello; con un `aside` personalizzato è ignorato.
+     */
+    asideLink?: AsideLink;
+    /**
      * Mostra sotto la card il blocco "Le altre app Mavida", con i link alle altre app
      * dell'ecosistema (dalla 1.8.0, default false: admin e log non lo vogliono).
      */
     ecosystem?: boolean;
 }
-export declare function LoginScreen({ title, subtitle, logo, footer, messages: custom, resendCooldown, className, aside, layout, signup, asideImage, ecosystem, }: LoginScreenProps): import("react").JSX.Element;
+export declare function LoginScreen({ title, subtitle, logo, footer, messages: custom, resendCooldown, className, aside, layout, signup, asideImage, asideLink, ecosystem, }: LoginScreenProps): import("react").JSX.Element;

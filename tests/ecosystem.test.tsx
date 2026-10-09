@@ -144,6 +144,32 @@ describe('LoginScreen: ecosystem e asideImage', () => {
     expect(screen.queryByAltText('Anteprima')).toBeNull();
   });
 
+  it("asideLink mostra il pulsante sotto l'immagine, come link normale", async () => {
+    const { container } = schermata(CONFIG, {
+      asideImage: { src: '/x.jpg', alt: 'Anteprima' },
+      asideLink: { href: '/about/', label: 'Approfondisci' },
+    });
+
+    const cta = await screen.findByRole('link', { name: /Approfondisci/ });
+    expect(cta.getAttribute('href')).toBe('/about/');
+    expect(cta.className).toBe('hub-auth__aside-cta');
+    // Ordine nel pannello: immagine, poi pulsante
+    const img = screen.getByAltText('Anteprima');
+    expect(img.compareDocumentPosition(cta) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(container.querySelector('aside')?.contains(cta)).toBe(true);
+  });
+
+  it('asideLink da solo fa comparire il pannello; con un aside personalizzato non si vede', async () => {
+    const solo = schermata(CONFIG_SENZA_PANNELLO, { asideLink: { href: '/about/', label: 'Approfondisci' } });
+    await screen.findByRole('link', { name: /Approfondisci/ });
+    expect(solo.container.querySelector('.hub-auth--split')).not.toBeNull();
+    solo.unmount();
+
+    schermata(CONFIG, { aside: <p>Pannello dell'app</p>, asideLink: { href: '/about/', label: 'Approfondisci' } });
+    await screen.findByText("Pannello dell'app");
+    expect(screen.queryByRole('link', { name: /Approfondisci/ })).toBeNull();
+  });
+
   it('la card sta in un <main> (landmark), nel layout a due metà e in quello centrato', async () => {
     const diviso = schermata(CONFIG);
     await screen.findByText('Articoli con AI');

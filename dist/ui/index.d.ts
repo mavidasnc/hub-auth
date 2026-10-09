@@ -2,7 +2,7 @@
  * @mavida/hub-auth/ui — componenti di login (stile in @mavida/hub-auth/ui.css)
  */
 export { LoginScreen } from './LoginScreen.js';
-export type { AsideImage, LoginScreenProps } from './LoginScreen.js';
+export type { AsideImage, AsideLink, LoginScreenProps } from './LoginScreen.js';
 export { EmailStep } from './EmailStep.js';
 export type { EmailStepProps } from './EmailStep.js';
 export { LinkStep } from './LinkStep.js';

@@ -721,6 +721,39 @@
   box-shadow: 0 8px 24px rgb(15 23 42 / 0.14);
 }
 
+/* Pulsante sotto l'immagine del pannello (dalla 1.10.0), ad es. "Approfondisci" */
+.hub-auth__aside-cta {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 8px;
+  padding: 11px 20px;
+  border-radius: var(--hub-auth-radius-sm);
+  background: var(--hub-auth-primary);
+  color: var(--hub-auth-primary-text);
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.hub-auth__aside-cta:hover {
+  background: var(--hub-auth-primary-hover);
+}
+
+.hub-auth__aside-cta:focus-visible {
+  outline: 3px solid var(--hub-auth-focus);
+  outline-offset: 2px;
+}
+
+.hub-auth__aside-cta-arrow {
+  transition: transform 0.15s ease;
+}
+
+.hub-auth__aside-cta:hover .hub-auth__aside-cta-arrow {
+  transform: translateX(3px);
+}
+
 @keyframes hub-auth-aside-in {
   from { opacity: 0; }
   to { opacity: 1; }

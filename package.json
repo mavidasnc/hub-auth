@@ -1,6 +1,6 @@
 {
   "name": "@mavida/hub-auth",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "description": "Login OTP condiviso per i frontend dell'ecosistema hub (core headless, hook React, UI stilizzabile)",
   "private": true,
   "type": "module",

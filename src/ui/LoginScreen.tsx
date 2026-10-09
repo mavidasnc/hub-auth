@@ -38,6 +38,14 @@ export interface AsideImage {
   height?: number;
 }
 
+/** Pulsante sotto l'immagine del pannello (es. "Approfondisci" verso la pagina about) */
+export interface AsideLink {
+  /** Destinazione del link (es. '/about/') */
+  href: string;
+  /** Testo del pulsante (es. 'Approfondisci') */
+  label: string;
+}
+
 export interface LoginScreenProps {
   /** Titolo della card (es. nome dell'app) */
   title?: ReactNode;
@@ -71,6 +79,12 @@ export interface LoginScreenProps {
    */
   asideImage?: AsideImage;
   /**
+   * Pulsante (CTA) nel pannello di default, sotto l'immagine (dalla 1.10.0): un link
+   * normale, visibile e seguibile anche dai motori di ricerca. Da solo basta a far
+   * comparire il pannello; con un `aside` personalizzato è ignorato.
+   */
+  asideLink?: AsideLink;
+  /**
    * Mostra sotto la card il blocco "Le altre app Mavida", con i link alle altre app
    * dell'ecosistema (dalla 1.8.0, default false: admin e log non lo vogliono).
    */
@@ -78,7 +92,7 @@ export interface LoginScreenProps {
 }
 
 /** Pannello di default: logo dell'app, etichetta, descrizione e avviso del tool (da hub) */
-function DefaultAside({ logo, image }: { logo?: ReactNode; image?: AsideImage }) {
+function DefaultAside({ logo, image, link }: { logo?: ReactNode; image?: AsideImage; link?: AsideLink }) {
   const { toolConfig } = useHubAuth();
   const tool = toolConfig?.tool;
   return (
@@ -97,13 +111,19 @@ function DefaultAside({ logo, image }: { logo?: ReactNode; image?: AsideImage })
           decoding="async"
         />
       )}
+      {link && (
+        <a className="hub-auth__aside-cta" href={link.href}>
+          {link.label}
+          <span className="hub-auth__aside-cta-arrow" aria-hidden="true">→</span>
+        </a>
+      )}
     </>
   );
 }
 
 export function LoginScreen({
   title, subtitle, logo, footer, messages: custom, resendCooldown, className = '',
-  aside, layout = 'auto', signup = true, asideImage, ecosystem = false,
+  aside, layout = 'auto', signup = true, asideImage, asideLink, ecosystem = false,
 }: LoginScreenProps) {
   const messages = mergeMessages(custom);
   const { step, notice, toolConfig, loadToolConfig, client } = useHubAuth();
@@ -115,7 +135,7 @@ export function LoginScreen({
   }, [loadToolConfig]);
 
   const tool = toolConfig?.tool;
-  const hasAside = aside != null || !!(tool?.description || tool?.login_notice || asideImage);
+  const hasAside = aside != null || !!(tool?.description || tool?.login_notice || asideImage || asideLink);
   const split = layout === 'split' || (layout === 'auto' && hasAside);
   // Con il pannello di default il logo sta nel pannello (e si toglie dalla card sopra i 900px);
   // con un `aside` personalizzato resta nella card, che è l'unico posto dove l'app lo mette.
@@ -164,7 +184,7 @@ export function LoginScreen({
       <div className="hub-auth__split">
         <aside className="hub-auth__aside">
           <div className="hub-auth__aside-content">
-            {aside ?? <DefaultAside logo={logo} image={asideImage} />}
+            {aside ?? <DefaultAside logo={logo} image={asideImage} link={asideLink} />}
           </div>
         </aside>
         <main className="hub-auth__main">

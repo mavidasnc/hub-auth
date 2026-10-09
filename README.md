@@ -183,11 +183,13 @@ Tema del pannello: di default segue il tema dell'app (tinta leggera del primario
 <LoginScreen
   title="Wandly"
   asideImage={{ src: '/login-hero.jpg', alt: "Schermata di Wandly con un articolo in bozza", width: 1200, height: 750 }}
+  asideLink={{ href: '/about/', label: 'Approfondisci' }}
   ecosystem
 />
 ```
 
 - `asideImage` mette un'immagine nel pannello di default (sotto descrizione e avviso). Dare sempre `alt`, `width` e `height`: l'alt serve a chi non vede l'immagine e ai motori di ricerca, le dimensioni evitano lo spostamento del layout. Da sola basta a mostrare il pannello; con `aside` personalizzato non viene usata.
+- `asideLink` (`{ href, label }`, dalla 1.10.0) aggiunge sotto l'immagine un pulsante, tipicamente "Approfondisci" verso `/about/`: un link normale, quindi seguibile anche dai crawler. Il pannello risulta così: logo, titolo, descrizione, immagine, pulsante.
 - `ecosystem` aggiunge sotto la card il blocco "Le altre app Mavida" (link alle altre cinque app, `<nav aria-label>` dentro il `<footer>`). Di default è spento. L'app corrente è esclusa (da `tool` di `createHubAuth`, altrimenti dall'host).
 - **Dopo il login**: `EcosystemMenu` è il pulsante con tendina per l'header o la sidebar. `theme="dark"` per le app scure, `align="end"` se il pulsante sta a destra, `current` per escludere l'app (di norma non serve), `label` per cambiare il testo. Per i colori: variabili `--hub-auth-eco-bg`, `--hub-auth-eco-text`, `--hub-auth-eco-muted`, `--hub-auth-eco-border`, `--hub-auth-eco-hover` (funziona anche fuori da `.hub-auth`, basta importare `@mavida/hub-auth/ui.css`).
 
