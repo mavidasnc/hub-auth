@@ -4,7 +4,10 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
  *
  * Hub invia il testo con `format`:
  *  - 'markdown': viene convertito in HTML con marked e sanificato con DOMPurify
- *    (il testo lo scrive un admin, ma l'HTML non è mai considerato fidato);
+ *    (il testo lo scrive un admin, ma l'HTML non è mai considerato fidato).
+ *    Dalla 1.8.0 la sanificazione ammette solo il sottoinsieme che produce il
+ *    Markdown (titoli, elenchi, tabelle, enfasi, link, citazioni, codice): niente
+ *    `style`, `form`, `input`, `img` o `iframe`, nemmeno scritti come HTML grezzo;
  *  - assente o 'text' (hub più vecchi): testo semplice a paragrafi, dove un
  *    paragrafo "Titolo\ntesto" mostra il titolo su una riga propria in grassetto.
  *
@@ -12,20 +15,32 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
  * (import dinamico), così non pesano sul bundle del login.
  */
 import { useEffect, useState } from 'react';
+// Sottoinsieme di HTML ammesso: quello che il Markdown può produrre
+const ALLOWED_TAGS = [
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'hr', 'ul', 'ol', 'li',
+    'strong', 'em', 'del', 'a', 'blockquote', 'code', 'pre',
+    'table', 'thead', 'tbody', 'tr', 'th', 'td',
+];
+const ALLOWED_ATTR = ['href', 'title', 'target', 'rel'];
 // Un solo caricamento per pagina: le aperture successive riusano il convertitore
 let rendererPromise = null;
 /** Carica marked e DOMPurify e restituisce la funzione Markdown → HTML sanificato */
 function loadRenderer() {
     if (!rendererPromise) {
-        rendererPromise = Promise.all([import('marked'), import('dompurify')]).then(([{ marked }, { default: DOMPurify }]) => {
+        rendererPromise = Promise.all([import('marked'), import('dompurify')]).then(([{ marked }, { default: createDOMPurify }]) => {
+            // Istanza propria: l'hook sui link non deve toccare il DOMPurify condiviso dall'app
+            const purify = createDOMPurify(window);
             // I link dell'informativa si aprono in una nuova scheda, senza lasciare il form
-            DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+            purify.addHook('afterSanitizeAttributes', (node) => {
                 if (node.tagName === 'A') {
                     node.setAttribute('target', '_blank');
                     node.setAttribute('rel', 'noopener noreferrer');
                 }
             });
-            return (markdown) => DOMPurify.sanitize(marked.parse(markdown, { gfm: true, async: false }));
+            return (markdown) => purify.sanitize(marked.parse(markdown, { gfm: true, async: false }), {
+                ALLOWED_TAGS,
+                ALLOWED_ATTR,
+            });
         });
         // Se il caricamento fallisce (rete, chunk mancante) la prossima apertura riprova
         rendererPromise.catch(() => { rendererPromise = null; });

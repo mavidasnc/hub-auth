@@ -50,6 +50,8 @@ export interface HubAuthMessages {
     registeredTitle: string;
     registeredText: string;
     backToLogin: string;
+    ecosystemTitle: string;
+    ecosystemMenu: string;
     notice: Record<AuthNotice, string>;
 }
 export declare const defaultMessages: HubAuthMessages;

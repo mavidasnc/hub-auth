@@ -12,6 +12,9 @@
  *   (GET /auth/tool-config, modificabili dalla tab Tools di admin-dashboard)
  * - dall'app, con la prop `aside` (sostituisce il pannello di default)
  * Senza né l'uno né l'altro la schermata resta la card centrata di sempre.
+ *
+ * Dalla 1.8.0: `asideImage` (immagine nel pannello di default), `ecosystem` (blocco
+ * "Le altre app Mavida" sotto la card) e landmark semantici (`<main>`, `<footer>`).
  */
 
 import { useEffect, type ReactNode } from 'react';
@@ -21,7 +24,19 @@ import { LinkStep } from './LinkStep.js';
 import { OtpStep } from './OtpStep.js';
 import { RegisteredStep } from './RegisteredStep.js';
 import { RegisterStep } from './RegisterStep.js';
+import { EcosystemNav } from './EcosystemMenu.js';
 import { mergeMessages, type HubAuthMessages } from './messages.js';
+
+/** Immagine del pannello laterale (es. uno screenshot dell'app) */
+export interface AsideImage {
+  /** URL dell'immagine (es. '/login-hero.jpg') */
+  src: string;
+  /** Testo alternativo: descrive l'immagine per chi non la vede e per i motori di ricerca */
+  alt: string;
+  /** Dimensioni intrinseche in pixel: riservano lo spazio ed evitano lo spostamento del layout */
+  width?: number;
+  height?: number;
+}
 
 export interface LoginScreenProps {
   /** Titolo della card (es. nome dell'app) */
@@ -50,10 +65,20 @@ export interface LoginScreenProps {
   layout?: 'auto' | 'split' | 'centered';
   /** Mostra il link "Registrati" quando hub offre la registrazione (default true) */
   signup?: boolean;
+  /**
+   * Immagine nel pannello di default, sotto descrizione e avviso (dalla 1.8.0). Da sola
+   * basta a far comparire il pannello; con un `aside` personalizzato è ignorata.
+   */
+  asideImage?: AsideImage;
+  /**
+   * Mostra sotto la card il blocco "Le altre app Mavida", con i link alle altre app
+   * dell'ecosistema (dalla 1.8.0, default false: admin e log non lo vogliono).
+   */
+  ecosystem?: boolean;
 }
 
 /** Pannello di default: logo dell'app, etichetta, descrizione e avviso del tool (da hub) */
-function DefaultAside({ logo }: { logo?: ReactNode }) {
+function DefaultAside({ logo, image }: { logo?: ReactNode; image?: AsideImage }) {
   const { toolConfig } = useHubAuth();
   const tool = toolConfig?.tool;
   return (
@@ -62,16 +87,26 @@ function DefaultAside({ logo }: { logo?: ReactNode }) {
       {tool?.label && <h2 className="hub-auth__aside-title">{tool.label}</h2>}
       {tool?.description && <p className="hub-auth__aside-text">{tool.description}</p>}
       {tool?.login_notice && <p className="hub-auth__aside-notice" role="note">{tool.login_notice}</p>}
+      {image && (
+        <img
+          className="hub-auth__aside-image"
+          src={image.src}
+          alt={image.alt}
+          width={image.width}
+          height={image.height}
+          decoding="async"
+        />
+      )}
     </>
   );
 }
 
 export function LoginScreen({
   title, subtitle, logo, footer, messages: custom, resendCooldown, className = '',
-  aside, layout = 'auto', signup = true,
+  aside, layout = 'auto', signup = true, asideImage, ecosystem = false,
 }: LoginScreenProps) {
   const messages = mergeMessages(custom);
-  const { step, notice, toolConfig, loadToolConfig } = useHubAuth();
+  const { step, notice, toolConfig, loadToolConfig, client } = useHubAuth();
 
   // Pannello e registrazione dipendono dalla configurazione pubblica di hub:
   // si carica solo qui, quando la schermata di login è davvero mostrata
@@ -80,7 +115,7 @@ export function LoginScreen({
   }, [loadToolConfig]);
 
   const tool = toolConfig?.tool;
-  const hasAside = aside != null || !!(tool?.description || tool?.login_notice);
+  const hasAside = aside != null || !!(tool?.description || tool?.login_notice || asideImage);
   const split = layout === 'split' || (layout === 'auto' && hasAside);
   // Con il pannello di default il logo sta nel pannello (e si toglie dalla card sopra i 900px);
   // con un `aside` personalizzato resta nella card, che è l'unico posto dove l'app lo mette.
@@ -107,14 +142,20 @@ export function LoginScreen({
       {step === 'registered' && <RegisteredStep messages={custom} />}
     </div>
   );
-  const footerNode = footer && <div className="hub-auth__footer">{footer}</div>;
+  // Footer sotto la card: testo dell'app e, se richiesto, i link alle altre app dell'ecosistema
+  const footerNode = (footer || ecosystem) && (
+    <footer className="hub-auth__footer">
+      {footer}
+      {ecosystem && <EcosystemNav current={client.tool ?? tool?.key} messages={custom} />}
+    </footer>
+  );
 
   if (!split) {
     return (
-      <div className={`hub-auth ${className}`.trim()}>
+      <main className={`hub-auth ${className}`.trim()}>
         {card}
         {footerNode}
-      </div>
+      </main>
     );
   }
 
@@ -123,13 +164,13 @@ export function LoginScreen({
       <div className="hub-auth__split">
         <aside className="hub-auth__aside">
           <div className="hub-auth__aside-content">
-            {aside ?? <DefaultAside logo={logo} />}
+            {aside ?? <DefaultAside logo={logo} image={asideImage} />}
           </div>
         </aside>
-        <div className="hub-auth__main">
+        <main className="hub-auth__main">
           {card}
           {footerNode}
-        </div>
+        </main>
       </div>
     </div>
   );

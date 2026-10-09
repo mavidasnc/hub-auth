@@ -137,6 +137,8 @@ Esiti (`client.register()` / `RegisterStep`):
 - **`pending`**: lo step diventa `registered` ("registrazione ricevuta"); l'admin riceve una email con il link di attivazione (oppure imposta lo stato su `active` dalla dashboard) e l'utente una email quando l'account è attivo. Prima dell'attivazione l'utente non riceve codici di accesso.
 - **`active`**: hub ha già inviato il codice OTP e lo step diventa `otp`, come in un login normale.
 
+Dalla 1.8.0 la sanificazione ammette solo il sottoinsieme di HTML che produce il Markdown (niente `style`, `form`, `input`, `img`, `iframe`) con un DOMPurify proprio, che non interferisce con quello dell'app. L'informativa ha anche un URL pubblico, sempre disponibile e senza JavaScript: `GET /privacy` di hub (hub ≥ 0.221.0), da linkare dalle app.
+
 Il testo dell'informativa privacy sta su hub (campo `privacy_text`, modificabile dalla tab Privacy di admin-dashboard, oppure il file predefinito `content/privacy_registrazione.md`) e arriva da `GET /auth/tool-config`: modificarlo non richiede di toccare né di rilasciare le app. Dalla 1.7.0 è in **Markdown** (`privacy.format`) e la modale lo mostra formattato (tabelle, elenchi, link); `PrivacyContent` (`@mavida/hub-auth/ui`) è lo stesso rendering, riusabile per anteprime. Con un hub che non invia `format` resta il testo semplice a paragrafi. La versione del testo (un hash) viaggia con la registrazione; se cambia mentre l'utente compila, il form si riallinea e gli chiede di accettare di nuovo.
 
 Dalla 1.5.0 il testo non è stampato sotto il form ma in una **modale** (`<dialog>` nativo), che si apre dal link "informativa sulla privacy" nella frase del consenso o dal pulsante "Visualizza il testo completo dell'informativa". "Accetto l'informativa" chiude la modale e spunta la casella; "Chiudi", Esc o un clic sullo sfondo la chiudono senza dare il consenso. Nei testi, `privacyLabel` usa `{link}` per il punto in cui compare il pulsante (`privacyLinkText`).
@@ -174,6 +176,28 @@ Sopra i 900px le due metà stanno in un contenitore centrato largo al massimo `-
 `layout` controlla la scelta: `'auto'` (default, due metà solo se c'è un pannello), `'split'` (sempre) o `'centered'` (sempre la sola card centrata, come nella 1.2). Senza pannello il DOM è identico a quello della 1.2: nessuna app esistente cambia aspetto finché non ha una descrizione, un avviso o una `aside`.
 
 Tema del pannello: di default segue il tema dell'app (tinta leggera del primario sopra lo sfondo della card, testo e bordo del tema). Variabili `--hub-auth-aside-bg`, `--hub-auth-aside-text`, `--hub-auth-aside-border` e `--hub-auth-aside-padding`; classi `hub-auth--split`, `hub-auth__aside`, `hub-auth__aside-title`, `hub-auth__aside-text`, `hub-auth__aside-notice`. Il pannello definito dal database compare dopo la risposta di `/auth/tool-config` (con una breve dissolvenza); per averlo dal primo istante usare la prop `aside`.
+
+## Immagine nel pannello e link alle altre app (1.8.0)
+
+```tsx
+<LoginScreen
+  title="Wandly"
+  asideImage={{ src: '/login-hero.jpg', alt: "Schermata di Wandly con un articolo in bozza", width: 1200, height: 750 }}
+  ecosystem
+/>
+```
+
+- `asideImage` mette un'immagine nel pannello di default (sotto descrizione e avviso). Dare sempre `alt`, `width` e `height`: l'alt serve a chi non vede l'immagine e ai motori di ricerca, le dimensioni evitano lo spostamento del layout. Da sola basta a mostrare il pannello; con `aside` personalizzato non viene usata.
+- `ecosystem` aggiunge sotto la card il blocco "Le altre app Mavida" (link alle altre cinque app, `<nav aria-label>` dentro il `<footer>`). Di default è spento. L'app corrente è esclusa (da `tool` di `createHubAuth`, altrimenti dall'host).
+- **Dopo il login**: `EcosystemMenu` è il pulsante con tendina per l'header o la sidebar. `theme="dark"` per le app scure, `align="end"` se il pulsante sta a destra, `current` per escludere l'app (di norma non serve), `label` per cambiare il testo. Per i colori: variabili `--hub-auth-eco-bg`, `--hub-auth-eco-text`, `--hub-auth-eco-muted`, `--hub-auth-eco-border`, `--hub-auth-eco-hover` (funziona anche fuori da `.hub-auth`, basta importare `@mavida/hub-auth/ui.css`).
+
+```tsx
+import { EcosystemMenu } from '@mavida/hub-auth/ui';
+<EcosystemMenu theme="dark" align="end" />
+```
+
+- `EcosystemNav` è lo stesso elenco come `<nav>` di link, per footer e pagine pubbliche; `ECOSYSTEM_APPS` e `otherApps(current?)` espongono il catalogo (fisso: Wandly, Slide-orama, Social Planner, WooSync, VoiceNote, Fleet; admin e log esclusi).
+- Il login ha ora i landmark `<main>` e `<footer>` (non più `<div>`): se l'app avvolge già `LoginScreen` in un `<main>`, toglierlo.
 
 ## Personalizzazione
 

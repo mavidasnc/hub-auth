@@ -50,6 +50,8 @@ export const defaultMessages = {
     registeredTitle: 'Registrazione ricevuta',
     registeredText: 'Grazie! Abbiamo registrato la tua richiesta per {email}. Riceverai una email appena il tuo account sarà attivato.',
     backToLogin: "Torna all'accesso",
+    ecosystemTitle: 'Le altre app Mavida',
+    ecosystemMenu: 'App Mavida',
     notice: {
         session_expired: 'Sessione scaduta: accedi di nuovo.',
         tool_not_enabled: 'Questo strumento non è abilitato per il tuo account.',

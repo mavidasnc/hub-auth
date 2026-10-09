@@ -2,7 +2,7 @@
  * @mavida/hub-auth/ui — componenti di login (stile in @mavida/hub-auth/ui.css)
  */
 export { LoginScreen } from './LoginScreen.js';
-export type { LoginScreenProps } from './LoginScreen.js';
+export type { AsideImage, LoginScreenProps } from './LoginScreen.js';
 export { EmailStep } from './EmailStep.js';
 export type { EmailStepProps } from './EmailStep.js';
 export { LinkStep } from './LinkStep.js';
@@ -13,6 +13,10 @@ export { RegisterStep } from './RegisterStep.js';
 export type { RegisterStepProps } from './RegisterStep.js';
 export { RegisteredStep } from './RegisteredStep.js';
 export type { RegisteredStepProps } from './RegisteredStep.js';
+export { EcosystemMenu, EcosystemNav } from './EcosystemMenu.js';
+export type { EcosystemMenuProps, EcosystemNavProps } from './EcosystemMenu.js';
+export { ECOSYSTEM_APPS, otherApps } from './ecosystem.js';
+export type { EcosystemApp } from './ecosystem.js';
 export { PrivacyContent } from './PrivacyContent.js';
 export type { PrivacyContentProps } from './PrivacyContent.js';
 export { OtpInput } from './OtpInput.js';

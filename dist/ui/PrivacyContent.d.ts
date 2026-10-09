@@ -3,7 +3,10 @@
  *
  * Hub invia il testo con `format`:
  *  - 'markdown': viene convertito in HTML con marked e sanificato con DOMPurify
- *    (il testo lo scrive un admin, ma l'HTML non è mai considerato fidato);
+ *    (il testo lo scrive un admin, ma l'HTML non è mai considerato fidato).
+ *    Dalla 1.8.0 la sanificazione ammette solo il sottoinsieme che produce il
+ *    Markdown (titoli, elenchi, tabelle, enfasi, link, citazioni, codice): niente
+ *    `style`, `form`, `input`, `img` o `iframe`, nemmeno scritti come HTML grezzo;
  *  - assente o 'text' (hub più vecchi): testo semplice a paragrafi, dove un
  *    paragrafo "Titolo\ntesto" mostra il titolo su una riga propria in grassetto.
  *

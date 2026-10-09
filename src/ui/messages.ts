@@ -53,6 +53,8 @@ export interface HubAuthMessages {
   registeredTitle: string;
   registeredText: string;
   backToLogin: string;
+  ecosystemTitle: string;
+  ecosystemMenu: string;
   notice: Record<AuthNotice, string>;
 }
 
@@ -99,6 +101,8 @@ export const defaultMessages: HubAuthMessages = {
   registeredTitle: 'Registrazione ricevuta',
   registeredText: 'Grazie! Abbiamo registrato la tua richiesta per {email}. Riceverai una email appena il tuo account sarà attivato.',
   backToLogin: "Torna all'accesso",
+  ecosystemTitle: 'Le altre app Mavida',
+  ecosystemMenu: 'App Mavida',
   notice: {
     session_expired: 'Sessione scaduta: accedi di nuovo.',
     tool_not_enabled: 'Questo strumento non è abilitato per il tuo account.',

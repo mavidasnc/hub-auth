@@ -694,6 +694,7 @@ export function createHubAuth(config) {
             return () => void listeners.delete(listener);
         },
         ready,
+        tool: config.tool,
         getToken: () => state.token,
         url,
         requestOtp,

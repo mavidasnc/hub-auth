@@ -7,6 +7,8 @@ export { LinkStep } from './LinkStep.js';
 export { OtpStep } from './OtpStep.js';
 export { RegisterStep } from './RegisterStep.js';
 export { RegisteredStep } from './RegisteredStep.js';
+export { EcosystemMenu, EcosystemNav } from './EcosystemMenu.js';
+export { ECOSYSTEM_APPS, otherApps } from './ecosystem.js';
 export { PrivacyContent } from './PrivacyContent.js';
 export { OtpInput } from './OtpInput.js';
 export { defaultMessages, mergeMessages, format, errorMessage } from './messages.js';

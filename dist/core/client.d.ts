@@ -173,6 +173,8 @@ export interface HubAuthClient {
     subscribe(listener: () => void): () => void;
     /** Risolta quando la sessione salvata è stata letta dallo storage */
     ready: Promise<void>;
+    /** Chiave del tool con cui è stato creato il client (`tool` di createHubAuth), se indicata (dalla 1.8.0) */
+    readonly tool?: string;
     /** Token corrente (null se non autenticato) */
     getToken(): string | null;
     /** URL assoluto di un percorso relativo alla base di hub (gli URL assoluti restano invariati) */

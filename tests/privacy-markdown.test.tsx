@@ -71,6 +71,43 @@ describe('PrivacyContent', () => {
     expect((window as unknown as { __hacked?: boolean }).__hacked).toBeUndefined();
   });
 
+  it('1.8.0: ammette solo il sottoinsieme Markdown, senza style, form, input, img e iframe', async () => {
+    const ostile = [
+      'Testo di prova.',
+      '',
+      '<style>body { display: none }</style>',
+      '',
+      '<form action="https://x.example"><input name="password"></form>',
+      '',
+      '<iframe src="https://x.example"></iframe>',
+      '',
+      '![tracker](https://x.example/p.gif)',
+      '',
+      '- [x] voce',
+    ].join('\n');
+
+    const { container } = render(<PrivacyContent text={ostile} format="markdown" />);
+
+    await screen.findByText('Testo di prova.');
+    for (const vietato of ['style', 'form', 'input', 'iframe', 'img']) {
+      expect(container.querySelector(vietato)).toBeNull();
+    }
+    expect(container.innerHTML).not.toContain('x.example');
+    // Le voci di elenco restano
+    expect(container.querySelectorAll('li')).toHaveLength(1);
+  });
+
+  it("1.8.0: l'hook sui link non tocca il DOMPurify condiviso dall'app", async () => {
+    const { container } = render(<PrivacyContent text={MARKDOWN} format="markdown" />);
+    await waitFor(() => expect(container.querySelector('a')).not.toBeNull());
+
+    const { default: condiviso } = await import('dompurify');
+    const html = condiviso.sanitize('<a href="https://www.mavida.com">sito</a>');
+
+    expect(html).not.toContain('target');
+    expect(html).not.toContain('noopener');
+  });
+
   it('senza format resta il testo semplice: "Titolo\\ntesto" con titolo in grassetto', () => {
     const { container } = render(<PrivacyContent text={'Titolare\nMavida snc.\n\nSecondo paragrafo.'} />);
 

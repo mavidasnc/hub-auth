@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.8.0 — 2026-10-09
+
+Nessun requisito nuovo su hub: tutto è retrocompatibile e le novità sono opt-in. Con hub ≥ 0.221.0 l'informativa ha anche un URL pubblico (`GET /privacy`), da linkare dalle app.
+
+- **`asideImage`** (`{ src, alt, width?, height? }`) in `LoginScreen`: immagine nel pannello di default, sotto descrizione e avviso (screenshot dell'app, alt descrittivo). Da sola fa comparire il pannello; con un `aside` personalizzato è ignorata. Classe `hub-auth__aside-image` (altezza massima 18rem, ritaglio in alto a sinistra).
+- **Blocco ecosistema nel login**: prop `ecosystem` (default `false`, così admin e log non cambiano) che mostra sotto la card "Le altre app Mavida", cioè i link alle altre cinque app. La corrente si riconosce da `tool` di `createHubAuth` (nuovo campo di sola lettura `client.tool`) o, in mancanza, dall'host della pagina.
+- **Nuovi export `EcosystemMenu`, `EcosystemNav`, `ECOSYSTEM_APPS`, `otherApps`** (`@mavida/hub-auth/ui`): `EcosystemMenu` è un pulsante con tendina "App Mavida" per l'header o la sidebar delle app dopo il login (Esc e clic fuori la chiudono; `theme="dark"`, `align`, `label`, `current`; variabili `--hub-auth-eco-*`); `EcosystemNav` è l'elenco di link per footer e pagine pubbliche. Il catalogo è fisso (Wandly, Slide-orama, Social Planner, WooSync, VoiceNote, Fleet) con nomi e frasi da `__docs/presentazione`. Nuovi testi `ecosystemTitle` ed `ecosystemMenu` in `messages`.
+- **Landmark semantici (modifica visibile)**: l'area della card è un `<main>` (nel layout a due metà `main.hub-auth__main`; in quello centrato il contenitore `.hub-auth` diventa `<main>`) e il footer è un `<footer class="hub-auth__footer">` invece di un `<div>`. Le classi non cambiano; un'app che avvolge già `LoginScreen` in un `<main>` avrà due landmark main.
+- **Sanificazione dell'informativa più stretta** (`PrivacyContent`): DOMPurify ammette solo il sottoinsieme che produce il Markdown (titoli, elenchi, tabelle, enfasi, link, citazioni, codice); niente `style`, `form`, `input`, `img` o `iframe`, nemmeno come HTML grezzo, e le caselle dei task list non si mostrano. L'hook che apre i link in una nuova scheda sta su un'**istanza propria** di DOMPurify e non tocca più quella condivisa dall'app.
+
 ## 1.7.0 — 2026-10-09
 
 - **Informativa privacy in Markdown**: hub ≥ 0.219.0 invia il testo con `privacy.format = 'markdown'` (modificabile dalla tab Privacy di admin-dashboard) e la modale lo mostra formattato: titoli, elenchi, tabelle (con scorrimento orizzontale), grassetti e link, che si aprono in una nuova scheda. Il testo è convertito con `marked` e sanificato con `DOMPurify`; le due librerie si caricano solo alla prima apertura della modale (import dinamico), quindi non pesano sul bundle del login. Se il caricamento fallisce la modale ricade sul testo semplice.

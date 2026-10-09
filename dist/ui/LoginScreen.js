@@ -13,6 +13,9 @@ import { jsx as _jsx, Fragment as _Fragment, jsxs as _jsxs } from "react/jsx-run
  *   (GET /auth/tool-config, modificabili dalla tab Tools di admin-dashboard)
  * - dall'app, con la prop `aside` (sostituisce il pannello di default)
  * Senza né l'uno né l'altro la schermata resta la card centrata di sempre.
+ *
+ * Dalla 1.8.0: `asideImage` (immagine nel pannello di default), `ecosystem` (blocco
+ * "Le altre app Mavida" sotto la card) e landmark semantici (`<main>`, `<footer>`).
  */
 import { useEffect } from 'react';
 import { useHubAuth } from '../react/index.js';
@@ -21,31 +24,33 @@ import { LinkStep } from './LinkStep.js';
 import { OtpStep } from './OtpStep.js';
 import { RegisteredStep } from './RegisteredStep.js';
 import { RegisterStep } from './RegisterStep.js';
+import { EcosystemNav } from './EcosystemMenu.js';
 import { mergeMessages } from './messages.js';
 /** Pannello di default: logo dell'app, etichetta, descrizione e avviso del tool (da hub) */
-function DefaultAside({ logo }) {
+function DefaultAside({ logo, image }) {
     const { toolConfig } = useHubAuth();
     const tool = toolConfig?.tool;
-    return (_jsxs(_Fragment, { children: [logo && _jsx("div", { className: "hub-auth__aside-logo", children: logo }), tool?.label && _jsx("h2", { className: "hub-auth__aside-title", children: tool.label }), tool?.description && _jsx("p", { className: "hub-auth__aside-text", children: tool.description }), tool?.login_notice && _jsx("p", { className: "hub-auth__aside-notice", role: "note", children: tool.login_notice })] }));
+    return (_jsxs(_Fragment, { children: [logo && _jsx("div", { className: "hub-auth__aside-logo", children: logo }), tool?.label && _jsx("h2", { className: "hub-auth__aside-title", children: tool.label }), tool?.description && _jsx("p", { className: "hub-auth__aside-text", children: tool.description }), tool?.login_notice && _jsx("p", { className: "hub-auth__aside-notice", role: "note", children: tool.login_notice }), image && (_jsx("img", { className: "hub-auth__aside-image", src: image.src, alt: image.alt, width: image.width, height: image.height, decoding: "async" }))] }));
 }
-export function LoginScreen({ title, subtitle, logo, footer, messages: custom, resendCooldown, className = '', aside, layout = 'auto', signup = true, }) {
+export function LoginScreen({ title, subtitle, logo, footer, messages: custom, resendCooldown, className = '', aside, layout = 'auto', signup = true, asideImage, ecosystem = false, }) {
     const messages = mergeMessages(custom);
-    const { step, notice, toolConfig, loadToolConfig } = useHubAuth();
+    const { step, notice, toolConfig, loadToolConfig, client } = useHubAuth();
     // Pannello e registrazione dipendono dalla configurazione pubblica di hub:
     // si carica solo qui, quando la schermata di login è davvero mostrata
     useEffect(() => {
         void loadToolConfig();
     }, [loadToolConfig]);
     const tool = toolConfig?.tool;
-    const hasAside = aside != null || !!(tool?.description || tool?.login_notice);
+    const hasAside = aside != null || !!(tool?.description || tool?.login_notice || asideImage);
     const split = layout === 'split' || (layout === 'auto' && hasAside);
     // Con il pannello di default il logo sta nel pannello (e si toglie dalla card sopra i 900px);
     // con un `aside` personalizzato resta nella card, che è l'unico posto dove l'app lo mette.
     const logoInAside = split && aside == null && !!logo;
     const card = (_jsxs("div", { className: "hub-auth__card", children: [(logo || title || subtitle) && (_jsxs("header", { className: "hub-auth__header", children: [logo && _jsx("div", { className: "hub-auth__logo", children: logo }), title && _jsx("h1", { className: "hub-auth__title", children: title }), subtitle && _jsx("p", { className: "hub-auth__subtitle", children: subtitle })] })), notice && step === 'email' && (_jsx("p", { className: "hub-auth__notice", role: "status", children: messages.notice[notice] })), step === 'email' && _jsx(EmailStep, { messages: custom, signup: signup }), step === 'otp' && _jsx(OtpStep, { messages: custom, resendCooldown: resendCooldown, signup: signup }), step === 'link' && _jsx(LinkStep, { messages: custom }), step === 'register' && _jsx(RegisterStep, { messages: custom }), step === 'registered' && _jsx(RegisteredStep, { messages: custom })] }));
-    const footerNode = footer && _jsx("div", { className: "hub-auth__footer", children: footer });
+    // Footer sotto la card: testo dell'app e, se richiesto, i link alle altre app dell'ecosistema
+    const footerNode = (footer || ecosystem) && (_jsxs("footer", { className: "hub-auth__footer", children: [footer, ecosystem && _jsx(EcosystemNav, { current: client.tool ?? tool?.key, messages: custom })] }));
     if (!split) {
-        return (_jsxs("div", { className: `hub-auth ${className}`.trim(), children: [card, footerNode] }));
+        return (_jsxs("main", { className: `hub-auth ${className}`.trim(), children: [card, footerNode] }));
     }
-    return (_jsx("div", { className: `hub-auth hub-auth--split${logoInAside ? ' hub-auth--logo-aside' : ''} ${className}`.trim(), children: _jsxs("div", { className: "hub-auth__split", children: [_jsx("aside", { className: "hub-auth__aside", children: _jsx("div", { className: "hub-auth__aside-content", children: aside ?? _jsx(DefaultAside, { logo: logo }) }) }), _jsxs("div", { className: "hub-auth__main", children: [card, footerNode] })] }) }));
+    return (_jsx("div", { className: `hub-auth hub-auth--split${logoInAside ? ' hub-auth--logo-aside' : ''} ${className}`.trim(), children: _jsxs("div", { className: "hub-auth__split", children: [_jsx("aside", { className: "hub-auth__aside", children: _jsx("div", { className: "hub-auth__aside-content", children: aside ?? _jsx(DefaultAside, { logo: logo, image: asideImage }) }) }), _jsxs("main", { className: "hub-auth__main", children: [card, footerNode] })] }) }));
 }
