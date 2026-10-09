@@ -2,8 +2,9 @@
  * Form di registrazione: nome utente, email e accettazione dell'informativa privacy.
  *
  * Il testo dell'informativa arriva da hub (GET /auth/tool-config, modificabile
- * lato hub senza toccare le app): qui viene solo mostrato, in un box scorrevole,
- * suddiviso in paragrafi dalle righe vuote. La versione del testo mostrato
+ * lato hub senza toccare le app): qui viene solo mostrato, per intero e sotto il
+ * form (dalla 1.4.0, per leggerlo senza scorrere un riquadro), suddiviso in
+ * paragrafi dalle righe vuote. La versione del testo mostrato
  * viaggia con la richiesta di registrazione (la gestisce il client).
  */
 
@@ -40,6 +41,7 @@ export function RegisterStep({ messages: custom }: RegisterStepProps) {
   };
 
   return (
+    <>
     <form className="hub-auth__form" onSubmit={handleSubmit} noValidate>
       <h2 className="hub-auth__heading">{messages.registerTitle}</h2>
 
@@ -70,14 +72,6 @@ export function RegisterStep({ messages: custom }: RegisterStepProps) {
         required
       />
 
-      {paragraphs.length > 0 && (
-        <div className="hub-auth__privacy" tabIndex={0} role="region" aria-label={messages.privacyTitle}>
-          {paragraphs.map((text, index) => (
-            <p key={index} className="hub-auth__privacy-text">{text}</p>
-          ))}
-        </div>
-      )}
-
       <label className="hub-auth__check">
         <input
           type="checkbox"
@@ -104,5 +98,15 @@ export function RegisterStep({ messages: custom }: RegisterStepProps) {
         </button>
       </div>
     </form>
+
+    {paragraphs.length > 0 && (
+      <section className="hub-auth__privacy" aria-label={messages.privacyTitle}>
+        <h3 className="hub-auth__privacy-title">{messages.privacyTitle}</h3>
+        {paragraphs.map((text, index) => (
+          <p key={index} className="hub-auth__privacy-text">{text}</p>
+        ))}
+      </section>
+    )}
+    </>
   );
 }

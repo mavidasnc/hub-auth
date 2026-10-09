@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.0 — 2026-10-09
+
+- **Larghezza massima del layout a due metà**: le due metà stanno in un contenitore centrato largo al massimo 1200px (variabile `--hub-auth-split-max-width`), con bordo, angoli arrotondati e ombra, invece di allargarsi a tutto lo schermo: su un monitor 4K il pannello e il login non sono più lontani. Sotto i 900px non cambia nulla (login sopra, pannello sotto, a tutta larghezza). **Modifica visibile**: il DOM del layout diviso ha un elemento in più (`div.hub-auth__split` fra `.hub-auth` e le due metà).
+- **Logo nel pannello**: con il pannello di default compare in alto il `logo` passato a `LoginScreen`, ingrandito a 72px; sopra i 900px la card non lo ripete (classe `hub-auth--logo-aside`). Con un `aside` personalizzato, o senza pannello, il logo resta nella card.
+- **Informativa privacy sotto il form di registrazione**: non più in un riquadro scorrevole fra i campi e la spunta, ma per intero sotto il form, con titolo e interlinea da testo da leggere. Classi nuove `hub-auth__privacy-title`; il blocco è una `<section>` con `aria-label`.
+
 ## 1.3.1 — 2026-10-09
 
 - **Pannello laterale in tema con l'app**: il pannello del layout a due metà non usa più il colore primario a tinta unita con testo bianco (illeggibile con primari chiari come il verde neon di Slide-orama). Ora lo sfondo è una tinta leggera del primario sopra lo sfondo della card, il testo e il bordo sono quelli del tema, l'avviso ha una barra colorata a sinistra. Funziona con temi chiari e scuri senza configurazione. Nuova variabile `--hub-auth-aside-border`; i default di `--hub-auth-aside-bg` e `--hub-auth-aside-text` cambiano (restano sovrascrivibili).

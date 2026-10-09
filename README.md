@@ -165,6 +165,8 @@ Quando c'è qualcosa da mostrare, la schermata si divide: **pannello a sinistra*
 />
 ```
 
+Sopra i 900px le due metà stanno in un contenitore centrato largo al massimo `--hub-auth-split-max-width` (default 1200px). Il `logo` passato a `LoginScreen` compare in alto nel pannello di default (e non nella card); con un `aside` personalizzato resta nella card.
+
 `layout` controlla la scelta: `'auto'` (default, due metà solo se c'è un pannello), `'split'` (sempre) o `'centered'` (sempre la sola card centrata, come nella 1.2). Senza pannello il DOM è identico a quello della 1.2: nessuna app esistente cambia aspetto finché non ha una descrizione, un avviso o una `aside`.
 
 Tema del pannello: di default segue il tema dell'app (tinta leggera del primario sopra lo sfondo della card, testo e bordo del tema). Variabili `--hub-auth-aside-bg`, `--hub-auth-aside-text`, `--hub-auth-aside-border` e `--hub-auth-aside-padding`; classi `hub-auth--split`, `hub-auth__aside`, `hub-auth__aside-title`, `hub-auth__aside-text`, `hub-auth__aside-notice`. Il pannello definito dal database compare dopo la risposta di `/auth/tool-config` (con una breve dissolvenza); per averlo dal primo istante usare la prop `aside`.

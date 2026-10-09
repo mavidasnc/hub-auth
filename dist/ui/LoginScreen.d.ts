@@ -4,8 +4,9 @@
  * registrazione).
  *
  * Layout a due metà (dalla 1.3.0): quando c'è un pannello da mostrare, a
- * sinistra compare il pannello (descrizione, avvisi o altro) e a destra il
- * login; sotto i 900px il login passa sopra e il pannello sotto. Il pannello
+ * sinistra compare il pannello (logo, descrizione, avvisi o altro) e a destra il
+ * login, in un contenitore largo al massimo 1200px (`--hub-auth-split-max-width`);
+ * sotto i 900px il login passa sopra e il pannello sotto. Il pannello
  * si personalizza in due modi:
  * - dal database di hub, senza toccare l'app: descrizione e avviso del tool
  *   (GET /auth/tool-config, modificabili dalla tab Tools di admin-dashboard)

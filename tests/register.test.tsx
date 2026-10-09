@@ -479,3 +479,74 @@ describe('UI: layout a due metà', () => {
     expect(document.querySelector('.hub-auth > .hub-auth__footer')).not.toBeNull();
   });
 });
+
+describe('UI: logo nel pannello, contenitore e informativa sotto il form (1.4.0)', () => {
+  const LOGO = <img src="/favicon.svg" alt="" width={48} height={48} data-testid="logo-app" />;
+
+  function monta(rotte: Rotte, props: Parameters<typeof LoginScreen>[0] = {}) {
+    const ctx = creaClient(rotte);
+    render(
+      <HubAuthProvider client={ctx.client}>
+        <LoginScreen title="App" {...props} />
+      </HubAuthProvider>,
+    );
+    return ctx;
+  }
+
+  it('le due metà stanno in un contenitore dedicato (larghezza massima da CSS)', async () => {
+    monta({ config: () => json(200, CONFIG_APERTA) });
+
+    await screen.findByText('Articoli con AI');
+    const contenitore = document.querySelector('.hub-auth--split > .hub-auth__split');
+    expect(contenitore).not.toBeNull();
+    expect(contenitore!.querySelector(':scope > aside.hub-auth__aside')).not.toBeNull();
+    expect(contenitore!.querySelector(':scope > .hub-auth__main .hub-auth__card')).not.toBeNull();
+  });
+
+  it('il logo dell\'app compare nel pannello e la card lo nasconde da CSS (classe sul contenitore)', async () => {
+    monta({ config: () => json(200, CONFIG_APERTA) }, { logo: LOGO });
+
+    await screen.findByText('Articoli con AI');
+    expect(document.querySelector('aside .hub-auth__aside-logo [data-testid="logo-app"]')).not.toBeNull();
+    expect(document.querySelector('.hub-auth--logo-aside')).not.toBeNull();
+  });
+
+  it('senza logo non c\'è né blocco logo nel pannello né la classe', async () => {
+    monta({ config: () => json(200, CONFIG_APERTA) });
+
+    await screen.findByText('Articoli con AI');
+    expect(document.querySelector('.hub-auth__aside-logo')).toBeNull();
+    expect(document.querySelector('.hub-auth--logo-aside')).toBeNull();
+  });
+
+  it('con un aside personalizzato il logo resta nella card', async () => {
+    monta({ config: () => json(200, CONFIG_APERTA) }, { logo: LOGO, aside: <p>Pannello</p> });
+
+    await screen.findByText('Pannello');
+    expect(document.querySelector('aside [data-testid="logo-app"]')).toBeNull();
+    expect(document.querySelector('.hub-auth__card [data-testid="logo-app"]')).not.toBeNull();
+    expect(document.querySelector('.hub-auth--logo-aside')).toBeNull();
+  });
+
+  it('senza pannello (centrata) il logo resta nella card', async () => {
+    monta({ config: () => json(200, CONFIG_CHIUSA) }, { logo: LOGO });
+
+    await screen.findByLabelText('Email');
+    expect(document.querySelector('.hub-auth__card [data-testid="logo-app"]')).not.toBeNull();
+    expect(document.querySelector('.hub-auth__aside')).toBeNull();
+  });
+
+  it('l\'informativa privacy sta sotto il form, per intero e senza riquadro scorrevole', async () => {
+    monta({ config: () => json(200, CONFIG_APERTA) });
+    fireEvent.click(await screen.findByRole('button', { name: 'Non hai un account? Registrati' }));
+    await screen.findByLabelText('Nome utente');
+
+    const form = document.querySelector('form.hub-auth__form')!;
+    const informativa = screen.getByRole('region', { name: 'Informativa sulla privacy' });
+    expect(form.compareDocumentPosition(informativa) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(form.contains(informativa)).toBe(false);
+    expect(informativa.getAttribute('tabindex')).toBeNull();
+    expect(informativa.querySelector('h3')!.textContent).toBe('Informativa sulla privacy');
+    expect(informativa.querySelectorAll('p')).toHaveLength(2);
+  });
+});

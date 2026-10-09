@@ -4,8 +4,9 @@
  * registrazione).
  *
  * Layout a due metà (dalla 1.3.0): quando c'è un pannello da mostrare, a
- * sinistra compare il pannello (descrizione, avvisi o altro) e a destra il
- * login; sotto i 900px il login passa sopra e il pannello sotto. Il pannello
+ * sinistra compare il pannello (logo, descrizione, avvisi o altro) e a destra il
+ * login, in un contenitore largo al massimo 1200px (`--hub-auth-split-max-width`);
+ * sotto i 900px il login passa sopra e il pannello sotto. Il pannello
  * si personalizza in due modi:
  * - dal database di hub, senza toccare l'app: descrizione e avviso del tool
  *   (GET /auth/tool-config, modificabili dalla tab Tools di admin-dashboard)
@@ -51,16 +52,16 @@ export interface LoginScreenProps {
   signup?: boolean;
 }
 
-/** Pannello di default: etichetta, descrizione e avviso del tool, da hub */
-function DefaultAside() {
+/** Pannello di default: logo dell'app, etichetta, descrizione e avviso del tool (da hub) */
+function DefaultAside({ logo }: { logo?: ReactNode }) {
   const { toolConfig } = useHubAuth();
   const tool = toolConfig?.tool;
-  if (!tool) return null;
   return (
     <>
-      {tool.label && <h2 className="hub-auth__aside-title">{tool.label}</h2>}
-      {tool.description && <p className="hub-auth__aside-text">{tool.description}</p>}
-      {tool.login_notice && <p className="hub-auth__aside-notice" role="note">{tool.login_notice}</p>}
+      {logo && <div className="hub-auth__aside-logo">{logo}</div>}
+      {tool?.label && <h2 className="hub-auth__aside-title">{tool.label}</h2>}
+      {tool?.description && <p className="hub-auth__aside-text">{tool.description}</p>}
+      {tool?.login_notice && <p className="hub-auth__aside-notice" role="note">{tool.login_notice}</p>}
     </>
   );
 }
@@ -81,6 +82,9 @@ export function LoginScreen({
   const tool = toolConfig?.tool;
   const hasAside = aside != null || !!(tool?.description || tool?.login_notice);
   const split = layout === 'split' || (layout === 'auto' && hasAside);
+  // Con il pannello di default il logo sta nel pannello (e si toglie dalla card sopra i 900px);
+  // con un `aside` personalizzato resta nella card, che è l'unico posto dove l'app lo mette.
+  const logoInAside = split && aside == null && !!logo;
 
   const card = (
     <div className="hub-auth__card">
@@ -115,15 +119,17 @@ export function LoginScreen({
   }
 
   return (
-    <div className={`hub-auth hub-auth--split ${className}`.trim()}>
-      <aside className="hub-auth__aside">
-        <div className="hub-auth__aside-content">
-          {aside ?? <DefaultAside />}
+    <div className={`hub-auth hub-auth--split${logoInAside ? ' hub-auth--logo-aside' : ''} ${className}`.trim()}>
+      <div className="hub-auth__split">
+        <aside className="hub-auth__aside">
+          <div className="hub-auth__aside-content">
+            {aside ?? <DefaultAside logo={logo} />}
+          </div>
+        </aside>
+        <div className="hub-auth__main">
+          {card}
+          {footerNode}
         </div>
-      </aside>
-      <div className="hub-auth__main">
-        {card}
-        {footerNode}
       </div>
     </div>
   );
