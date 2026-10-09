@@ -66,7 +66,8 @@ export type AuthStep = 'email' | 'otp' | 'link' | 'register' | 'registered';
  * - tool: etichetta, descrizione e avviso del tool (null se `tool` non è
  *   impostato o hub non lo conosce)
  * - signup_enabled: hub offre la registrazione per questo tool
- * - privacy: testo e versione dell'informativa (solo se la registrazione è offerta)
+ * - privacy: testo, versione e formato ('markdown' | 'text') dell'informativa
+ *   (solo se la registrazione è offerta)
  */
 export interface ToolConfig {
     tool: {
@@ -79,6 +80,7 @@ export interface ToolConfig {
     privacy: {
         text: string;
         version: string;
+        format?: 'markdown' | 'text';
     } | null;
 }
 /** Dati del form di registrazione */

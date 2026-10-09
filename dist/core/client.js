@@ -99,7 +99,12 @@ function toolConfigFromBody(body) {
         }
         : null;
     const privacy = obj.privacy && typeof obj.privacy.text === 'string' && typeof obj.privacy.version === 'string'
-        ? { text: obj.privacy.text, version: obj.privacy.version }
+        ? {
+            text: obj.privacy.text,
+            version: obj.privacy.version,
+            // Hub più vecchi non inviano il formato: il campo manca e vale testo semplice
+            ...(obj.privacy.format === 'markdown' ? { format: 'markdown' } : {}),
+        }
         : null;
     return { tool, signup_enabled: obj.signup_enabled, privacy };
 }

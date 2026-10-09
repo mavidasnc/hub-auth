@@ -30,8 +30,8 @@ export function RegisterStep({ messages: custom }: RegisterStepProps) {
   // Pulsante che ha aperto la modale: alla chiusura il focus torna lì
   const trigger = useRef<HTMLElement | null>(null);
 
-  const paragraphs = (toolConfig?.privacy?.text ?? '').split(/\n\s*\n/).filter((p) => p.trim());
-  const hasPrivacyText = paragraphs.length > 0;
+  const privacy = toolConfig?.privacy;
+  const hasPrivacyText = Boolean(privacy?.text.trim());
 
   // La frase del consenso può contenere {link}: diventa il pulsante dell'informativa
   const labelParts = messages.privacyLabel.split('{link}');
@@ -142,7 +142,8 @@ export function RegisterStep({ messages: custom }: RegisterStepProps) {
     {privacyOpen && (
       <PrivacyDialog
         messages={messages}
-        paragraphs={paragraphs}
+        text={privacy?.text ?? ''}
+        format={privacy?.format}
         onClose={closePrivacy}
         onAccept={() => { setAccepted(true); closePrivacy(); }}
       />

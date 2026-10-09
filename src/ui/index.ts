@@ -14,6 +14,8 @@ export { RegisterStep } from './RegisterStep.js';
 export type { RegisterStepProps } from './RegisterStep.js';
 export { RegisteredStep } from './RegisteredStep.js';
 export type { RegisteredStepProps } from './RegisteredStep.js';
+export { PrivacyContent } from './PrivacyContent.js';
+export type { PrivacyContentProps } from './PrivacyContent.js';
 export { OtpInput } from './OtpInput.js';
 export type { OtpInputProps } from './OtpInput.js';
 export { defaultMessages, mergeMessages, format, errorMessage } from './messages.js';

@@ -9,11 +9,13 @@
 import type { HubAuthMessages } from './messages.js';
 export interface PrivacyDialogProps {
     messages: HubAuthMessages;
-    /** Paragrafi dell'informativa (separati dalle righe vuote nel testo di hub) */
-    paragraphs: string[];
+    /** Testo dell'informativa, come arriva da hub */
+    text: string;
+    /** Formato del testo: 'markdown' oppure testo semplice (hub più vecchi) */
+    format?: 'markdown' | 'text';
     /** Chiusura senza consenso (pulsante Chiudi, Esc o clic sullo sfondo) */
     onClose: () => void;
     /** Chiusura con il consenso: il form spunta la casella dell'informativa */
     onAccept: () => void;
 }
-export declare function PrivacyDialog({ messages, paragraphs, onClose, onAccept }: PrivacyDialogProps): import("react").JSX.Element;
+export declare function PrivacyDialog({ messages, text, format, onClose, onAccept }: PrivacyDialogProps): import("react").JSX.Element;

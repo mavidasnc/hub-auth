@@ -362,6 +362,74 @@
   margin-bottom: 0;
 }
 
+/* Informativa in Markdown (dalla 1.7.0): titoli, elenchi, tabelle e link */
+.hub-auth__privacy-md > :first-child {
+  margin-top: 0;
+}
+
+.hub-auth__privacy-md > :last-child {
+  margin-bottom: 0;
+}
+
+.hub-auth__privacy-md h1,
+.hub-auth__privacy-md h2,
+.hub-auth__privacy-md h3 {
+  margin: 18px 0 6px;
+  color: var(--hub-auth-text);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.hub-auth__privacy-md h1 {
+  font-size: 1.05rem;
+}
+
+.hub-auth__privacy-md p,
+.hub-auth__privacy-md ul,
+.hub-auth__privacy-md ol {
+  margin: 0 0 10px;
+}
+
+.hub-auth__privacy-md ul,
+.hub-auth__privacy-md ol {
+  padding-left: 22px;
+}
+
+.hub-auth__privacy-md strong {
+  color: var(--hub-auth-text);
+  font-weight: 600;
+}
+
+.hub-auth__privacy-md a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+/* Tabelle larghe: scorrono in orizzontale dentro la modale, senza allargarla */
+.hub-auth__privacy-md table {
+  display: block;
+  max-width: 100%;
+  margin: 0 0 12px;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.hub-auth__privacy-md th,
+.hub-auth__privacy-md td {
+  padding: 6px 10px;
+  border: 1px solid var(--hub-auth-card-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.hub-auth__privacy-md th {
+  background: var(--hub-auth-input-bg);
+  color: var(--hub-auth-text);
+  font-weight: 600;
+}
+
 .hub-auth__check {
   display: flex;
   align-items: flex-start;

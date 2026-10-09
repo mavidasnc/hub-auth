@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.0 — 2026-10-09
+
+- **Informativa privacy in Markdown**: hub ≥ 0.219.0 invia il testo con `privacy.format = 'markdown'` (modificabile dalla tab Privacy di admin-dashboard) e la modale lo mostra formattato: titoli, elenchi, tabelle (con scorrimento orizzontale), grassetti e link, che si aprono in una nuova scheda. Il testo è convertito con `marked` e sanificato con `DOMPurify`; le due librerie si caricano solo alla prima apertura della modale (import dinamico), quindi non pesano sul bundle del login. Se il caricamento fallisce la modale ricade sul testo semplice.
+- **Retrocompatibile**: con un hub più vecchio il campo `format` manca e resta il rendering a paragrafi della 1.5 ("Titolo" + a capo + testo, titolo in grassetto). Con hub ≥ 0.219.0 e una app ancora ferma a hub-auth < 1.7.0 la modale mostra il Markdown grezzo: aggiornare le app prima del deploy di hub.
+- **Nuovo export `PrivacyContent`** (`@mavida/hub-auth/ui`, props `text` e `format`): è il corpo della modale, riusabile per un'anteprima (la usa la tab Privacy di admin-dashboard). `ToolConfig.privacy` ha il campo opzionale `format?: 'markdown' | 'text'`.
+- **Modifica visibile**: `PrivacyDialog` (interno, non esportato) riceve `text` e `format` al posto di `paragraphs`. Nuove classi CSS `hub-auth__privacy-md*` per il testo in Markdown. Nuove dipendenze `marked` e `dompurify`.
+
 ## 1.6.0 — 2026-10-09
 
 - **Passo del codice più onesto**: `otp-request` risponde 200 anche a email sconosciute (anti-enumerazione), quindi "Abbiamo inviato un codice a …" poteva essere falso. Il testo di default `codeSentTo` diventa "Se {email} è registrato, riceverai un codice via email." (sovrascrivibile con `messages`). **Modifica visibile**: chi confronta quel testo nei test deve aggiornarlo.

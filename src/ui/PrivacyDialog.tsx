@@ -9,18 +9,21 @@
 
 import { useEffect, useRef } from 'react';
 import type { HubAuthMessages } from './messages.js';
+import { PrivacyContent } from './PrivacyContent.js';
 
 export interface PrivacyDialogProps {
   messages: HubAuthMessages;
-  /** Paragrafi dell'informativa (separati dalle righe vuote nel testo di hub) */
-  paragraphs: string[];
+  /** Testo dell'informativa, come arriva da hub */
+  text: string;
+  /** Formato del testo: 'markdown' oppure testo semplice (hub più vecchi) */
+  format?: 'markdown' | 'text';
   /** Chiusura senza consenso (pulsante Chiudi, Esc o clic sullo sfondo) */
   onClose: () => void;
   /** Chiusura con il consenso: il form spunta la casella dell'informativa */
   onAccept: () => void;
 }
 
-export function PrivacyDialog({ messages, paragraphs, onClose, onAccept }: PrivacyDialogProps) {
+export function PrivacyDialog({ messages, text, format, onClose, onAccept }: PrivacyDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   // Apertura modale al montaggio. Il ripiego sull'attributo open serve agli
@@ -47,17 +50,7 @@ export function PrivacyDialog({ messages, paragraphs, onClose, onAccept }: Priva
 
         {/* tabIndex: la zona scorrevole si legge anche da tastiera */}
         <div className="hub-auth__dialog-body" tabIndex={0}>
-          {paragraphs.map((text, index) => {
-            const [first, ...rest] = text.split('\n');
-            return rest.length > 0 ? (
-              <p key={index} className="hub-auth__privacy-text">
-                <strong className="hub-auth__privacy-heading">{first.trim()}</strong>
-                {rest.join(' ').trim()}
-              </p>
-            ) : (
-              <p key={index} className="hub-auth__privacy-text">{text}</p>
-            );
-          })}
+          <PrivacyContent text={text} format={format} />
         </div>
 
         <div className="hub-auth__dialog-actions">

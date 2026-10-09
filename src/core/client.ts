@@ -73,7 +73,8 @@ export type AuthStep = 'email' | 'otp' | 'link' | 'register' | 'registered';
  * - tool: etichetta, descrizione e avviso del tool (null se `tool` non è
  *   impostato o hub non lo conosce)
  * - signup_enabled: hub offre la registrazione per questo tool
- * - privacy: testo e versione dell'informativa (solo se la registrazione è offerta)
+ * - privacy: testo, versione e formato ('markdown' | 'text') dell'informativa
+ *   (solo se la registrazione è offerta)
  */
 export interface ToolConfig {
   tool: {
@@ -83,7 +84,7 @@ export interface ToolConfig {
     login_notice: string | null;
   } | null;
   signup_enabled: boolean;
-  privacy: { text: string; version: string } | null;
+  privacy: { text: string; version: string; format?: 'markdown' | 'text' } | null;
 }
 
 /** Dati del form di registrazione */
@@ -322,7 +323,12 @@ function toolConfigFromBody(body: unknown): ToolConfig | null {
     }
     : null;
   const privacy = obj.privacy && typeof obj.privacy.text === 'string' && typeof obj.privacy.version === 'string'
-    ? { text: obj.privacy.text as string, version: obj.privacy.version as string }
+    ? {
+      text: obj.privacy.text as string,
+      version: obj.privacy.version as string,
+      // Hub più vecchi non inviano il formato: il campo manca e vale testo semplice
+      ...(obj.privacy.format === 'markdown' ? { format: 'markdown' as const } : {}),
+    }
     : null;
   return { tool, signup_enabled: obj.signup_enabled, privacy };
 }
