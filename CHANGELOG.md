@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.0 — 2026-10-09
+
+- **Informativa privacy in una modale**: il testo completo non è più stampato sotto il form di registrazione. Si apre con un `<dialog>` nativo (focus trap, Esc, sfondo oscurato) dal link "informativa sulla privacy" nella frase del consenso oppure dal pulsante "Visualizza il testo completo dell'informativa" sotto la casella. La modale ha "Chiudi" e "Accetto l'informativa" (chiude e spunta la casella); un clic sullo sfondo la chiude e il focus torna al pulsante che l'ha aperta. Il consenso resta la casella: aprire la modale non lo dà da solo.
+- **Messaggi**: `privacyLabel` ora contiene il segnaposto `{link}` ("Ho letto e accetto l'{link}"), sostituito dal pulsante con il testo `privacyLinkText`. Nuovi `privacyLinkText`, `privacyOpen`, `privacyClose`, `privacyAccept`. Un `privacyLabel` personalizzato senza `{link}` resta testo semplice e vale il solo pulsante sotto la casella.
+- **Modifica visibile**: spariscono la `<section class="hub-auth__privacy">` sotto il form, la classe `hub-auth__privacy` e `hub-auth__privacy-title`; restano `hub-auth__privacy-text` e `hub-auth__privacy-heading`, ora dentro la modale. Nuove classi `hub-auth__dialog*`, `hub-auth__button--secondary`, `hub-auth__link--inline` e `hub-auth__link--block`. Nei test dei progetti la casella si trova con `getByRole('checkbox')`: `getByLabelText` ignora il testo del pulsante dentro la label.
+
 ## 1.4.1 — 2026-10-09
 
 - **Informativa privacy**: un paragrafo nel formato `Titolo` + a capo + testo mostra il titolo su una riga propria, in grassetto (prima titolo e testo si fondevano in un'unica riga).

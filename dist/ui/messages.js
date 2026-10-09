@@ -3,7 +3,8 @@
  *
  * I default sono in italiano; ogni progetto può sovrascriverne una parte con
  * la prop `messages` (es. voicenote li prende da i18next). I segnaposto
- * {email}, {seconds} e {index} sono sostituiti da `format`.
+ * {email}, {seconds} e {index} sono sostituiti da `format`; {link} di
+ * `privacyLabel` diventa il pulsante che apre l'informativa (testo `privacyLinkText`).
  */
 import { HubAuthError } from '../core/index.js';
 export const defaultMessages = {
@@ -35,7 +36,11 @@ export const defaultMessages = {
     usernameLabel: 'Nome utente',
     usernamePlaceholder: 'Mario Rossi',
     privacyTitle: 'Informativa sulla privacy',
-    privacyLabel: "Ho letto e accetto l'informativa sulla privacy",
+    privacyLabel: "Ho letto e accetto l'{link}",
+    privacyLinkText: 'informativa sulla privacy',
+    privacyOpen: "Visualizza il testo completo dell'informativa",
+    privacyClose: 'Chiudi',
+    privacyAccept: "Accetto l'informativa",
     register: 'Registrati',
     registering: 'Registrazione in corso...',
     invalidUsername: 'Inserisci un nome utente di almeno 2 caratteri.',

@@ -260,21 +260,92 @@
   justify-content: center;
 }
 
-/* Informativa privacy: sotto il form, per intero, come testo da leggere */
-.hub-auth__privacy {
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--hub-auth-card-border);
+/* Informativa privacy: testo completo nella modale (dalla 1.5.0) */
+.hub-auth__dialog {
+  width: calc(100% - 32px);
+  max-width: 640px;
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--hub-auth-card-border);
+  border-radius: var(--hub-auth-radius);
+  background: var(--hub-auth-card-bg);
+  color: var(--hub-auth-text);
+  font-family: var(--hub-auth-font);
+  box-shadow: var(--hub-auth-card-shadow);
+}
+
+.hub-auth__dialog[open] {
+  display: flex;
+}
+
+.hub-auth__dialog::backdrop {
+  background: rgb(15 23 42 / 0.55);
+}
+
+.hub-auth__dialog-box {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding: 24px 24px 20px;
+}
+
+.hub-auth__dialog-title {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.hub-auth__dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-right: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   color: var(--hub-auth-muted);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   line-height: 1.65;
 }
 
-.hub-auth__privacy-title {
-  margin: 0 0 8px;
+.hub-auth__dialog-body:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--hub-auth-focus);
+}
+
+.hub-auth__dialog-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hub-auth-card-border);
+}
+
+.hub-auth__dialog-actions .hub-auth__button {
+  flex: 1 1 0;
+}
+
+.hub-auth__button--secondary {
+  border: 1px solid var(--hub-auth-input-border);
+  background: transparent;
   color: var(--hub-auth-text);
-  font-size: 0.9rem;
-  font-weight: 700;
+}
+
+.hub-auth__button--secondary:hover:not(:disabled) {
+  background: var(--hub-auth-input-bg);
+}
+
+/* Link dell'informativa: dentro la frase del consenso e sotto la casella */
+.hub-auth__link--inline {
+  font-size: inherit;
+  text-decoration: underline;
+}
+
+.hub-auth__link--block {
+  align-self: flex-start;
+  padding-left: 24px;
+  text-align: left;
 }
 
 .hub-auth__privacy-text {

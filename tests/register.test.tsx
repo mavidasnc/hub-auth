@@ -4,7 +4,7 @@
  * layout a due metà di LoginScreen.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createHubAuth, HubAuthError, memoryStorageAdapter } from '../src/core/index.js';
 import { HubAuthProvider } from '../src/react/index.js';
@@ -294,15 +294,115 @@ describe('UI: registrazione', () => {
     expect(screen.queryByText('Non hai un account? Registrati')).toBeNull();
   });
 
-  it('il link apre il form con il testo della privacy a paragrafi', async () => {
+  it('il link apre il form: il testo della privacy non è sotto il form ma nella modale', async () => {
     monta({ config: () => json(200, CONFIG_APERTA) });
 
     await apriForm();
 
-    expect(screen.getByText('Primo paragrafo.')).toBeTruthy();
-    expect(screen.getByText('Secondo paragrafo.')).toBeTruthy();
-    expect(screen.getByRole('region', { name: 'Informativa sulla privacy' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Crea il tuo account' })).toBeTruthy();
+    expect(screen.queryByText('Primo paragrafo.')).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('button', { name: "Visualizza il testo completo dell'informativa" })).toBeTruthy();
+  });
+
+  describe('modale dell\'informativa', () => {
+    it('si apre dal link nella frase del consenso, con i paragrafi', async () => {
+      monta({ config: () => json(200, CONFIG_APERTA) });
+      await apriForm();
+
+      fireEvent.click(screen.getByRole('button', { name: 'informativa sulla privacy' }));
+
+      const modale = screen.getByRole('dialog', { name: 'Informativa sulla privacy' });
+      expect(within(modale).getByText('Primo paragrafo.')).toBeTruthy();
+      expect(within(modale).getByText('Secondo paragrafo.')).toBeTruthy();
+    });
+
+    it('si apre dal pulsante "Visualizza il testo completo"', async () => {
+      monta({ config: () => json(200, CONFIG_APERTA) });
+      await apriForm();
+
+      fireEvent.click(screen.getByRole('button', { name: "Visualizza il testo completo dell'informativa" }));
+
+      expect(screen.getByRole('dialog', { name: 'Informativa sulla privacy' })).toBeTruthy();
+    });
+
+    it('il clic sul link non cambia la spunta', async () => {
+      monta({ config: () => json(200, CONFIG_APERTA) });
+      await apriForm();
+
+      fireEvent.click(screen.getByRole('button', { name: 'informativa sulla privacy' }));
+
+      const consenso = screen.getByRole('checkbox') as HTMLInputElement;
+      expect(consenso.checked).toBe(false);
+    });
+
+    it('il titolo di un paragrafo "Titolo\\ntesto" è in grassetto su una riga propria', async () => {
+      const config = { ...CONFIG_APERTA, privacy: { text: 'Titolare\nMavida snc.\n\nDiritti\nPuoi chiederci tutto.', version: 'v2' } };
+      monta({ config: () => json(200, config) });
+      await apriForm();
+
+      fireEvent.click(screen.getByRole('button', { name: 'informativa sulla privacy' }));
+
+      const titolo = screen.getByText('Titolare');
+      expect(titolo.tagName).toBe('STRONG');
+      expect(titolo.parentElement?.textContent).toBe('TitolareMavida snc.');
+    });
+
+    it('"Chiudi" la chiude senza dare il consenso', async () => {
+      monta({ config: () => json(200, CONFIG_APERTA) });
+      await apriForm();
+      fireEvent.click(screen.getByRole('button', { name: "Visualizza il testo completo dell'informativa" }));
+
+      fireEvent.click(screen.getByRole('button', { name: 'Chiudi' }));
+
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(false);
+    });
+
+    it('"Accetto l\'informativa" la chiude e spunta la casella', async () => {
+      monta({ config: () => json(200, CONFIG_APERTA) });
+      await apriForm();
+      fireEvent.click(screen.getByRole('button', { name: 'informativa sulla privacy' }));
+
+      fireEvent.click(screen.getByRole('button', { name: "Accetto l'informativa" }));
+
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(true);
+    });
+
+    it('il clic sullo sfondo la chiude, quello sul contenuto no', async () => {
+      monta({ config: () => json(200, CONFIG_APERTA) });
+      await apriForm();
+      fireEvent.click(screen.getByRole('button', { name: 'informativa sulla privacy' }));
+      const modale = screen.getByRole('dialog');
+
+      fireEvent.click(within(modale).getByText('Primo paragrafo.'));
+      expect(screen.queryByRole('dialog')).toBeTruthy();
+
+      fireEvent.click(modale);
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    it('alla chiusura il focus torna al pulsante che l\'ha aperta', async () => {
+      monta({ config: () => json(200, CONFIG_APERTA) });
+      await apriForm();
+      const apri = screen.getByRole('button', { name: "Visualizza il testo completo dell'informativa" });
+      fireEvent.click(apri);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Chiudi' }));
+
+      expect(document.activeElement).toBe(apri);
+    });
+
+    it('con un privacyLabel personalizzato senza {link} resta il solo pulsante', async () => {
+      monta({ config: () => json(200, CONFIG_APERTA) }, { messages: { privacyLabel: 'Accetto i termini' } });
+      await apriForm();
+
+      expect(screen.getByLabelText('Accetto i termini')).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'informativa sulla privacy' })).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: "Visualizza il testo completo dell'informativa" }));
+      expect(screen.getByRole('dialog')).toBeTruthy();
+    });
   });
 
   it('il pulsante si abilita solo con nome, email e consenso', async () => {
@@ -315,7 +415,7 @@ describe('UI: registrazione', () => {
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'mario@esempio.com' } });
     expect(invia.disabled).toBe(true);
 
-    fireEvent.click(screen.getByLabelText("Ho letto e accetto l'informativa sulla privacy"));
+    fireEvent.click(screen.getByRole('checkbox'));
     expect(invia.disabled).toBe(false);
   });
 
@@ -327,7 +427,7 @@ describe('UI: registrazione', () => {
     await apriForm();
     fireEvent.change(screen.getByLabelText('Nome utente'), { target: { value: 'Mario' } });
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'mario@esempio.com' } });
-    fireEvent.click(screen.getByLabelText("Ho letto e accetto l'informativa sulla privacy"));
+    fireEvent.click(screen.getByRole('checkbox'));
 
     fireEvent.click(screen.getByRole('button', { name: 'Registrati' }));
 
@@ -346,7 +446,7 @@ describe('UI: registrazione', () => {
     await apriForm();
     fireEvent.change(screen.getByLabelText('Nome utente'), { target: { value: 'Mario' } });
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'mario@esempio.com' } });
-    fireEvent.click(screen.getByLabelText("Ho letto e accetto l'informativa sulla privacy"));
+    fireEvent.click(screen.getByRole('checkbox'));
 
     fireEvent.click(screen.getByRole('button', { name: 'Registrati' }));
 
@@ -361,7 +461,7 @@ describe('UI: registrazione', () => {
     await apriForm();
     fireEvent.change(screen.getByLabelText('Nome utente'), { target: { value: 'Mario' } });
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'mario@esempio.com' } });
-    const consenso = screen.getByLabelText("Ho letto e accetto l'informativa sulla privacy") as HTMLInputElement;
+    const consenso = screen.getByRole('checkbox') as HTMLInputElement;
     fireEvent.click(consenso);
 
     fireEvent.click(screen.getByRole('button', { name: 'Registrati' }));
@@ -378,7 +478,7 @@ describe('UI: registrazione', () => {
     await apriForm();
     fireEvent.change(screen.getByLabelText('Nome utente'), { target: { value: 'Mario' } });
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'mario@esempio.com' } });
-    fireEvent.click(screen.getByLabelText("Ho letto e accetto l'informativa sulla privacy"));
+    fireEvent.click(screen.getByRole('checkbox'));
 
     fireEvent.click(screen.getByRole('button', { name: 'Registrati' }));
 
@@ -480,7 +580,7 @@ describe('UI: layout a due metà', () => {
   });
 });
 
-describe('UI: logo nel pannello, contenitore e informativa sotto il form (1.4.0)', () => {
+describe('UI: logo nel pannello, contenitore e informativa (1.4.0, in modale dalla 1.5.0)', () => {
   const LOGO = <img src="/favicon.svg" alt="" width={48} height={48} data-testid="logo-app" />;
 
   function monta(rotte: Rotte, props: Parameters<typeof LoginScreen>[0] = {}) {
@@ -536,18 +636,22 @@ describe('UI: logo nel pannello, contenitore e informativa sotto il form (1.4.0)
     expect(document.querySelector('.hub-auth__aside')).toBeNull();
   });
 
-  it('l\'informativa privacy sta sotto il form, per intero e senza riquadro scorrevole', async () => {
+  it('l\'informativa privacy non è più sotto il form: sta in una modale, per intero', async () => {
     monta({ config: () => json(200, CONFIG_APERTA) });
     fireEvent.click(await screen.findByRole('button', { name: 'Non hai un account? Registrati' }));
     await screen.findByLabelText('Nome utente');
 
-    const form = document.querySelector('form.hub-auth__form')!;
-    const informativa = screen.getByRole('region', { name: 'Informativa sulla privacy' });
-    expect(form.compareDocumentPosition(informativa) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(form.contains(informativa)).toBe(false);
-    expect(informativa.getAttribute('tabindex')).toBeNull();
-    expect(informativa.querySelector('h3')!.textContent).toBe('Informativa sulla privacy');
-    expect(informativa.querySelectorAll('p')).toHaveLength(2);
+    // Nessun blocco di testo sotto il form
+    expect(document.querySelector('.hub-auth__privacy')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Informativa sulla privacy' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: "Visualizza il testo completo dell'informativa" }));
+    const modale = screen.getByRole('dialog', { name: 'Informativa sulla privacy' });
+    expect(document.querySelector('form.hub-auth__form')!.contains(modale)).toBe(false);
+    expect(modale.querySelector('h3')!.textContent).toBe('Informativa sulla privacy');
+    expect(modale.querySelectorAll('p')).toHaveLength(2);
+    // la zona scorrevole è raggiungibile da tastiera
+    expect(modale.querySelector('.hub-auth__dialog-body')!.getAttribute('tabindex')).toBe('0');
   });
 
   it('un paragrafo con titolo mostra il titolo in grassetto su una riga propria', async () => {
@@ -556,7 +660,8 @@ describe('UI: logo nel pannello, contenitore e informativa sotto il form (1.4.0)
     fireEvent.click(await screen.findByRole('button', { name: 'Non hai un account? Registrati' }));
     await screen.findByLabelText('Nome utente');
 
-    const informativa = screen.getByRole('region', { name: 'Informativa sulla privacy' });
+    fireEvent.click(screen.getByRole('button', { name: 'informativa sulla privacy' }));
+    const informativa = screen.getByRole('dialog', { name: 'Informativa sulla privacy' });
     const titolo = informativa.querySelector('strong.hub-auth__privacy-heading');
     expect(titolo!.textContent).toBe('Titolare');
     expect(titolo!.parentElement!.textContent).toBe('TitolareIl titolare è Mavida.');

@@ -139,6 +139,8 @@ Esiti (`client.register()` / `RegisterStep`):
 
 Il testo dell'informativa privacy sta su hub (`content/privacy_registrazione.txt`) e arriva da `GET /auth/tool-config`: modificarlo non richiede di toccare né di rilasciare le app. La versione del testo (un hash) viaggia con la registrazione; se cambia mentre l'utente compila, il form si riallinea e gli chiede di accettare di nuovo.
 
+Dalla 1.5.0 il testo non è stampato sotto il form ma in una **modale** (`<dialog>` nativo), che si apre dal link "informativa sulla privacy" nella frase del consenso o dal pulsante "Visualizza il testo completo dell'informativa". "Accetto l'informativa" chiude la modale e spunta la casella; "Chiudi", Esc o un clic sullo sfondo la chiudono senza dare il consenso. Nei testi, `privacyLabel` usa `{link}` per il punto in cui compare il pulsante (`privacyLinkText`).
+
 Dal codice:
 
 ```tsx
@@ -173,7 +175,7 @@ Tema del pannello: di default segue il tema dell'app (tinta leggera del primario
 
 ## Personalizzazione
 
-- **Testi**: `<LoginScreen messages={{ sendCode: 'Invia', ... }} />` (o alle singole `EmailStep`/`OtpStep`). VoiceNote passa le stringhe di i18next.
+- **Testi**: `<LoginScreen messages={{ sendCode: 'Invia', ... }} />` (o alle singole `EmailStep`/`OtpStep`). VoiceNote passa le stringhe di i18next. Le chiavi sono quelle di `HubAuthMessages` in `src/ui/messages.ts`; per la registrazione: `registerTitle`, `usernameLabel`, `privacyTitle`, `privacyLabel` (con `{link}`), `privacyLinkText`, `privacyOpen`, `privacyClose`, `privacyAccept`, `register`.
 - **Stile**: variabili CSS su `.hub-auth` o su una classe passata con `className`. Vedi i commenti in `src/ui/hub-auth.css`.
 - **Storage**: passare un `StorageAdapter` diverso da `localStorageAdapter` (es. IndexedDB per wp-fleet-manager).
 - **Ruoli**: `<AuthGate requireRole="admin" denied={<AccessDenied />}>`.

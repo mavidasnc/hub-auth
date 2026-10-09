@@ -2,16 +2,17 @@
  * Form di registrazione: nome utente, email e accettazione dell'informativa privacy.
  *
  * Il testo dell'informativa arriva da hub (GET /auth/tool-config, modificabile
- * lato hub senza toccare le app): qui viene solo mostrato, per intero e sotto il
- * form (dalla 1.4.0, per leggerlo senza scorrere un riquadro), suddiviso in
- * paragrafi dalle righe vuote. La versione del testo mostrato
- * viaggia con la richiesta di registrazione (la gestisce il client).
+ * lato hub senza toccare le app): qui viene solo mostrato, per intero, in una
+ * modale (dalla 1.5.0) aperta dal link nella frase del consenso o dal pulsante
+ * sotto la casella, suddiviso in paragrafi dalle righe vuote. La versione del
+ * testo mostrato viaggia con la richiesta di registrazione (la gestisce il client).
  */
 
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent, type MouseEvent } from 'react';
 import { HubAuthError } from '../core/index.js';
 import { useHubAuth } from '../react/index.js';
 import { errorMessage, mergeMessages, type HubAuthMessages } from './messages.js';
+import { PrivacyDialog } from './PrivacyDialog.js';
 
 export interface RegisterStepProps {
   messages?: Partial<HubAuthMessages>;
@@ -24,8 +25,28 @@ export function RegisterStep({ messages: custom }: RegisterStepProps) {
   const [email, setEmail] = useState('');
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState('');
+  const [privacyOpen, setPrivacyOpen] = useState(false);
+  // Pulsante che ha aperto la modale: alla chiusura il focus torna lì
+  const trigger = useRef<HTMLElement | null>(null);
 
   const paragraphs = (toolConfig?.privacy?.text ?? '').split(/\n\s*\n/).filter((p) => p.trim());
+  const hasPrivacyText = paragraphs.length > 0;
+
+  // La frase del consenso può contenere {link}: diventa il pulsante dell'informativa
+  const labelParts = messages.privacyLabel.split('{link}');
+
+  /** Handler: apre la modale. Dentro la <label> evita che il clic cambi la spunta */
+  const openPrivacy = (event: MouseEvent<HTMLElement>) => {
+    event.preventDefault();
+    trigger.current = event.currentTarget;
+    setPrivacyOpen(true);
+  };
+
+  /** Handler: chiude la modale e riporta il focus al pulsante che l'ha aperta */
+  const closePrivacy = () => {
+    setPrivacyOpen(false);
+    trigger.current?.focus();
+  };
 
   /** Handler: invio del form, la validazione dei campi la fa il client */
   const handleSubmit = async (event: FormEvent) => {
@@ -79,8 +100,26 @@ export function RegisterStep({ messages: custom }: RegisterStepProps) {
           onChange={(e) => setAccepted(e.target.checked)}
           disabled={loading}
         />
-        <span>{messages.privacyLabel}</span>
+        <span>
+          {labelParts.length === 2 ? (
+            <>
+              {labelParts[0]}
+              {hasPrivacyText ? (
+                <button className="hub-auth__link hub-auth__link--inline" type="button" onClick={openPrivacy}>
+                  {messages.privacyLinkText}
+                </button>
+              ) : messages.privacyLinkText}
+              {labelParts[1]}
+            </>
+          ) : messages.privacyLabel}
+        </span>
       </label>
+
+      {hasPrivacyText && (
+        <button className="hub-auth__link hub-auth__link--block" type="button" onClick={openPrivacy}>
+          {messages.privacyOpen}
+        </button>
+      )}
 
       {error && <p className="hub-auth__error" role="alert">{error}</p>}
 
@@ -99,22 +138,13 @@ export function RegisterStep({ messages: custom }: RegisterStepProps) {
       </div>
     </form>
 
-    {paragraphs.length > 0 && (
-      <section className="hub-auth__privacy" aria-label={messages.privacyTitle}>
-        <h3 className="hub-auth__privacy-title">{messages.privacyTitle}</h3>
-        {paragraphs.map((text, index) => {
-          // Un paragrafo "Titolo\ntesto" mostra il titolo su una riga propria, in grassetto
-          const [first, ...rest] = text.split('\n');
-          return rest.length > 0 ? (
-            <p key={index} className="hub-auth__privacy-text">
-              <strong className="hub-auth__privacy-heading">{first.trim()}</strong>
-              {rest.join(' ').trim()}
-            </p>
-          ) : (
-            <p key={index} className="hub-auth__privacy-text">{text}</p>
-          );
-        })}
-      </section>
+    {privacyOpen && (
+      <PrivacyDialog
+        messages={messages}
+        paragraphs={paragraphs}
+        onClose={closePrivacy}
+        onAccept={() => { setAccepted(true); closePrivacy(); }}
+      />
     )}
     </>
   );
