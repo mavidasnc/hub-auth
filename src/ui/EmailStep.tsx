@@ -11,11 +11,13 @@ import { errorMessage, mergeMessages, type HubAuthMessages } from './messages.js
 
 export interface EmailStepProps {
   messages?: Partial<HubAuthMessages>;
+  /** Mostra il link "Registrati" quando hub offre la registrazione (default true) */
+  signup?: boolean;
 }
 
-export function EmailStep({ messages: custom }: EmailStepProps) {
+export function EmailStep({ messages: custom, signup = true }: EmailStepProps) {
   const messages = mergeMessages(custom);
-  const { requestOtp, loading } = useHubAuth();
+  const { requestOtp, startRegister, toolConfig, loading } = useHubAuth();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
 
@@ -53,6 +55,14 @@ export function EmailStep({ messages: custom }: EmailStepProps) {
       </button>
 
       <p className="hub-auth__hint">{messages.codeHint}</p>
+
+      {signup && toolConfig?.signup_enabled && (
+        <div className="hub-auth__links hub-auth__links--center">
+          <button className="hub-auth__link" type="button" onClick={startRegister} disabled={loading}>
+            {messages.signupLink}
+          </button>
+        </div>
+      )}
     </form>
   );
 }

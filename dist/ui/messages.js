@@ -29,6 +29,22 @@ export const defaultMessages = {
     linkConfirm: 'Accedi',
     linkSigning: 'Accesso in corso...',
     linkUseCode: 'Usa il codice invece',
+    signupLink: 'Non hai un account? Registrati',
+    loginLink: 'Hai già un account? Accedi',
+    registerTitle: 'Crea il tuo account',
+    usernameLabel: 'Nome utente',
+    usernamePlaceholder: 'Mario Rossi',
+    privacyTitle: 'Informativa sulla privacy',
+    privacyLabel: "Ho letto e accetto l'informativa sulla privacy",
+    register: 'Registrati',
+    registering: 'Registrazione in corso...',
+    invalidUsername: 'Inserisci un nome utente di almeno 2 caratteri.',
+    privacyRequired: "Per registrarti devi accettare l'informativa sulla privacy.",
+    signupDisabled: 'La registrazione non è al momento disponibile.',
+    privacyChanged: "L'informativa sulla privacy è stata aggiornata: rileggila e riprova.",
+    registeredTitle: 'Registrazione ricevuta',
+    registeredText: 'Grazie! Abbiamo registrato la tua richiesta per {email}. Riceverai una email appena il tuo account sarà attivato.',
+    backToLogin: "Torna all'accesso",
     notice: {
         session_expired: 'Sessione scaduta: accedi di nuovo.',
         tool_not_enabled: 'Questo strumento non è abilitato per il tuo account.',
@@ -64,6 +80,10 @@ export function errorMessage(err, messages, step) {
         case 'NetworkError': return messages.networkError;
         case 'ToolNotEnabled': return messages.notice.tool_not_enabled;
         case 'TrialExpired': return messages.notice.trial_expired;
+        case 'InvalidUsername': return messages.invalidUsername;
+        case 'PrivacyNotAccepted': return messages.privacyRequired;
+        case 'SignupDisabled': return messages.signupDisabled;
+        case 'PrivacyVersionMismatch': return messages.privacyChanged;
     }
     if (step === 'otp' && err.status === 401)
         return messages.invalidCode;

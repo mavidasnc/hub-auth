@@ -22,6 +22,13 @@
  * - magic link (opzione `magicLink`, attiva di default): il link dell'email OTP
  *   porta il token nel fragment (#hub_otp=...); l'app lo toglie subito dall'URL e
  *   lo usa solo dopo la conferma esplicita dell'utente (verifyLink)
+ *
+ * Dalla 1.3.0:
+ * - configurazione pubblica del login (GET /auth/tool-config, `loadToolConfig`):
+ *   pannello descrittivo del tool e disponibilità della registrazione
+ * - registrazione (`startRegister` / `register`): nome utente, email e consenso
+ *   privacy; l'esito dipende dalle impostazioni di hub: 'pending' (account da
+ *   approvare, step 'registered') oppure 'active' (codice OTP già inviato, step 'otp')
  */
 import { type StorageAdapter } from './storage.js';
 /**
@@ -52,14 +59,49 @@ export interface HubUser {
     /** Chiavi dei tool effettivi dell'utente */
     tools: string[];
 }
+/** Step del flusso di login */
+export type AuthStep = 'email' | 'otp' | 'link' | 'register' | 'registered';
+/**
+ * Configurazione pubblica della schermata di login (GET /auth/tool-config)
+ * - tool: etichetta, descrizione e avviso del tool (null se `tool` non è
+ *   impostato o hub non lo conosce)
+ * - signup_enabled: hub offre la registrazione per questo tool
+ * - privacy: testo e versione dell'informativa (solo se la registrazione è offerta)
+ */
+export interface ToolConfig {
+    tool: {
+        key: string;
+        label: string | null;
+        description: string | null;
+        login_notice: string | null;
+    } | null;
+    signup_enabled: boolean;
+    privacy: {
+        text: string;
+        version: string;
+    } | null;
+}
+/** Dati del form di registrazione */
+export interface RegisterData {
+    username: string;
+    email: string;
+    /** Consenso all'informativa privacy: deve essere true */
+    privacyAccepted: boolean;
+}
 /** Stato completo osservabile del client */
 export interface AuthState {
     status: AuthStatus;
     user: HubUser | null;
     token: string | null;
     notice: AuthNotice | null;
-    /** Step del flusso di login ('link' = aperto un magic link, in attesa della conferma) */
-    step: 'email' | 'otp' | 'link';
+    /**
+     * Step del flusso di login: 'link' = aperto un magic link (in attesa della
+     * conferma), 'register' = form di registrazione, 'registered' = registrazione
+     * ricevuta in attesa di approvazione
+     */
+    step: AuthStep;
+    /** Configurazione pubblica del login, null finché non caricata (o se hub non risponde) */
+    toolConfig: ToolConfig | null;
     /** Email a cui è stato chiesto il codice (step 'otp') */
     pendingEmail: string;
     /** Timestamp (ms) dell'ultima richiesta di codice riuscita, per il cooldown del reinvio */
@@ -71,7 +113,7 @@ export interface AuthState {
 }
 /** Configurazione del client */
 export interface HubAuthConfig {
-    /** Base URL di hub, con o senza slash finale (es. https://chat.mavida.com/wp-draft-generator/v1/) */
+    /** Base URL di hub, con o senza slash finale (es. https://hub.mavida.com/api/v1/) */
     baseUrl: string;
     /** Chiave con cui salvare la sessione (es. 'wandly:hub_session') */
     storageKey: string;
@@ -157,8 +199,23 @@ export interface HubAuthClient {
             user_id: string;
         };
     }): Promise<void>;
-    /** Torna allo step email ("cambia email") */
+    /** Torna allo step email ("cambia email", "ho già un account") */
     resetToEmail(): void;
+    /**
+     * Carica la configurazione pubblica del login (GET /auth/tool-config) in
+     * `toolConfig`. Non lancia mai: se hub non risponde la schermata resta
+     * senza pannello e senza registrazione. Con `force` ricarica anche se già presente.
+     */
+    loadToolConfig(force?: boolean): Promise<void>;
+    /** Apre il form di registrazione (solo se hub la offre per questo tool) */
+    startRegister(): void;
+    /**
+     * Registra un nuovo utente (POST /signup). Con account da approvare passa
+     * allo step 'registered', con account attivo a 'otp' (il codice è già stato
+     * inviato). Lancia HubAuthError (InvalidUsername, InvalidEmail,
+     * PrivacyNotAccepted, SignupDisabled, PrivacyVersionMismatch, 429, rete...).
+     */
+    register(data: RegisterData): Promise<void>;
     /** Ricarica utente e tool da GET /me */
     refresh(): Promise<void>;
     /**

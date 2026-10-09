@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.0 — 2026-10-09
+
+Richiede hub ≥ 0.216.0 per registrazione e pannello (con un hub più vecchio `GET auth/tool-config` non esiste: il client lo ignora e il login resta quello di prima, senza link di registrazione né pannello).
+
+- **Registrazione** nel `LoginScreen`: sotto il form email compare "Non hai un account? Registrati" se hub offre la registrazione per il tool; il form chiede nome utente, email e accettazione dell'informativa privacy (testo e versione da hub). Esito deciso dalle impostazioni di hub: account da approvare (step `registered`) oppure attivo subito (step `otp`, codice già inviato). Se il testo privacy cambia mentre si compila, il client si riallinea e chiede di accettare di nuovo. Nuovi componenti `RegisterStep` e `RegisteredStep`, prop `signup={false}` per nascondere il link.
+- **Client**: `loadToolConfig(force?)` (GET `auth/tool-config`, non lancia mai, richiesta unica anche con chiamate concorrenti), `startRegister()`, `register({ username, email, privacyAccepted })`, stato `toolConfig`. `LoginScreen` carica la configurazione solo quando è mostrato.
+- **Layout a due metà**: quando c'è un pannello da mostrare (descrizione o avviso del tool da hub, oppure la nuova prop `aside`) la schermata si divide, pannello a sinistra e login a destra; sotto i 900px il login passa sopra. Prop `layout`: `'auto'` (default), `'split'`, `'centered'`. Variabili `--hub-auth-aside-bg`, `--hub-auth-aside-text`, `--hub-auth-aside-padding`.
+- **Messaggi** italiani nuovi in `messages` (registrazione, privacy, conferma) e codici errore `InvalidUsername`, `PrivacyNotAccepted`, `SignupDisabled`, `PrivacyVersionMismatch`.
+- **Modifica visibile**: `AuthState.step` ammette anche `'register'` e `'registered'` e lo stato ha il campo `toolConfig`. Una UI di login propria che confronta `step` va aggiornata. Senza descrizione, avviso né `aside` il DOM e lo stile del `LoginScreen` sono identici a quelli della 1.2.
+
 ## 1.2.0 — 2026-10-02
 
 Richiede hub ≥ 0.192.0 per le funzioni nuove (con hub più vecchi il client si comporta come prima, tranne che `otp-request` riceve il campo `link`, ignorato).

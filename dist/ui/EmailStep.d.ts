@@ -7,5 +7,7 @@
 import { type HubAuthMessages } from './messages.js';
 export interface EmailStepProps {
     messages?: Partial<HubAuthMessages>;
+    /** Mostra il link "Registrati" quando hub offre la registrazione (default true) */
+    signup?: boolean;
 }
-export declare function EmailStep({ messages: custom }: EmailStepProps): import("react").JSX.Element;
+export declare function EmailStep({ messages: custom, signup }: EmailStepProps): import("react").JSX.Element;

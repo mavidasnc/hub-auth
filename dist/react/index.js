@@ -34,6 +34,9 @@ export function useHubAuth() {
         verifyLink: client.verifyLink,
         cancelLink: client.cancelLink,
         resetToEmail: client.resetToEmail,
+        loadToolConfig: client.loadToolConfig,
+        startRegister: client.startRegister,
+        register: client.register,
         refresh: client.refresh,
         logout: client.logout,
     };

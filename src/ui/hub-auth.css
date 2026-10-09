@@ -32,6 +32,10 @@
   --hub-auth-radius: 12px;
   --hub-auth-radius-sm: 8px;
   --hub-auth-card-width: 400px;
+  /* Pannello laterale del layout a due metà (dalla 1.3.0) */
+  --hub-auth-aside-bg: var(--hub-auth-primary);
+  --hub-auth-aside-text: #ffffff;
+  --hub-auth-aside-padding: 48px;
 
   box-sizing: border-box;
   display: flex;
@@ -235,4 +239,150 @@
 .hub-auth__footer {
   color: var(--hub-auth-muted);
   font-size: 0.875rem;
+}
+
+/* ── Form di registrazione (dalla 1.3.0) ─────────────────────────────────── */
+
+.hub-auth__heading {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.hub-auth__links--center {
+  justify-content: center;
+}
+
+.hub-auth__privacy {
+  max-height: 9rem;
+  padding: 10px 12px;
+  overflow-y: auto;
+  border: 1px solid var(--hub-auth-input-border);
+  border-radius: var(--hub-auth-radius-sm);
+  background: var(--hub-auth-input-bg);
+  color: var(--hub-auth-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.hub-auth__privacy:focus-visible {
+  outline: none;
+  border-color: var(--hub-auth-primary);
+  box-shadow: 0 0 0 3px var(--hub-auth-focus);
+}
+
+.hub-auth__privacy-text {
+  margin: 0 0 8px;
+}
+
+.hub-auth__privacy-text:last-child {
+  margin-bottom: 0;
+}
+
+.hub-auth__check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.hub-auth__check input {
+  flex: none;
+  margin-top: 3px;
+  accent-color: var(--hub-auth-primary);
+}
+
+/* ── Layout a due metà (dalla 1.3.0) ─────────────────────────────────────────
+ * Sotto i 900px: login sopra, pannello sotto (column-reverse sull'ordine del DOM,
+ * che è pannello poi login, così a schermo stretto l'accesso resta in primo piano).
+ * Da 900px: pannello a sinistra, login a destra, ciascuno a metà schermo.
+ */
+.hub-auth--split {
+  flex-direction: column-reverse;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 0;
+  padding: 0;
+}
+
+.hub-auth__main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px 16px;
+}
+
+.hub-auth__aside {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: var(--hub-auth-aside-padding) 24px;
+  background: var(--hub-auth-aside-bg);
+  color: var(--hub-auth-aside-text);
+  animation: hub-auth-aside-in 0.25s ease-out;
+}
+
+.hub-auth__aside-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 34rem;
+  margin: 0 auto;
+}
+
+.hub-auth__aside-title {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.hub-auth__aside-text {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  opacity: 0.92;
+  white-space: pre-line;
+}
+
+.hub-auth__aside-notice {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--hub-auth-radius-sm);
+  background: rgb(255 255 255 / 0.16);
+  font-size: 0.925rem;
+  white-space: pre-line;
+}
+
+@keyframes hub-auth-aside-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (min-width: 900px) {
+  .hub-auth--split {
+    flex-direction: row;
+  }
+
+  .hub-auth--split .hub-auth__aside,
+  .hub-auth--split .hub-auth__main {
+    flex: 1 1 50%;
+    min-width: 0;
+  }
+
+  .hub-auth__aside {
+    padding: var(--hub-auth-aside-padding);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hub-auth__aside {
+    animation: none;
+  }
 }

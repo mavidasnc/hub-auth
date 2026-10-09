@@ -34,6 +34,9 @@ export type UseHubAuthResult = AuthState & {
   verifyLink: HubAuthClient['verifyLink'];
   cancelLink: HubAuthClient['cancelLink'];
   resetToEmail: HubAuthClient['resetToEmail'];
+  loadToolConfig: HubAuthClient['loadToolConfig'];
+  startRegister: HubAuthClient['startRegister'];
+  register: HubAuthClient['register'];
   refresh: HubAuthClient['refresh'];
   logout: HubAuthClient['logout'];
 };
@@ -51,6 +54,9 @@ export function useHubAuth(): UseHubAuthResult {
     verifyLink: client.verifyLink,
     cancelLink: client.cancelLink,
     resetToEmail: client.resetToEmail,
+    loadToolConfig: client.loadToolConfig,
+    startRegister: client.startRegister,
+    register: client.register,
     refresh: client.refresh,
     logout: client.logout,
   };

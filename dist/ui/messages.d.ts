@@ -29,6 +29,22 @@ export interface HubAuthMessages {
     linkConfirm: string;
     linkSigning: string;
     linkUseCode: string;
+    signupLink: string;
+    loginLink: string;
+    registerTitle: string;
+    usernameLabel: string;
+    usernamePlaceholder: string;
+    privacyTitle: string;
+    privacyLabel: string;
+    register: string;
+    registering: string;
+    invalidUsername: string;
+    privacyRequired: string;
+    signupDisabled: string;
+    privacyChanged: string;
+    registeredTitle: string;
+    registeredText: string;
+    backToLogin: string;
     notice: Record<AuthNotice, string>;
 }
 export declare const defaultMessages: HubAuthMessages;
@@ -43,4 +59,4 @@ export declare function format(template: string, values: Record<string, string |
  * @param messages - Testi correnti
  * @param step - Step in cui è avvenuto l'errore (per il 401 di otp-verify)
  */
-export declare function errorMessage(err: unknown, messages: HubAuthMessages, step: 'email' | 'otp' | 'link'): string;
+export declare function errorMessage(err: unknown, messages: HubAuthMessages, step: 'email' | 'otp' | 'link' | 'register'): string;

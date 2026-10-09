@@ -22,6 +22,13 @@
  * - magic link (opzione `magicLink`, attiva di default): il link dell'email OTP
  *   porta il token nel fragment (#hub_otp=...); l'app lo toglie subito dall'URL e
  *   lo usa solo dopo la conferma esplicita dell'utente (verifyLink)
+ *
+ * Dalla 1.3.0:
+ * - configurazione pubblica del login (GET /auth/tool-config, `loadToolConfig`):
+ *   pannello descrittivo del tool e disponibilità della registrazione
+ * - registrazione (`startRegister` / `register`): nome utente, email e consenso
+ *   privacy; l'esito dipende dalle impostazioni di hub: 'pending' (account da
+ *   approvare, step 'registered') oppure 'active' (codice OTP già inviato, step 'otp')
  */
 
 import { errorFromBody, HubAuthError, networkError, type HubErrorBody } from './errors.js';
@@ -58,14 +65,49 @@ export interface HubUser {
   tools: string[];
 }
 
+/** Step del flusso di login */
+export type AuthStep = 'email' | 'otp' | 'link' | 'register' | 'registered';
+
+/**
+ * Configurazione pubblica della schermata di login (GET /auth/tool-config)
+ * - tool: etichetta, descrizione e avviso del tool (null se `tool` non è
+ *   impostato o hub non lo conosce)
+ * - signup_enabled: hub offre la registrazione per questo tool
+ * - privacy: testo e versione dell'informativa (solo se la registrazione è offerta)
+ */
+export interface ToolConfig {
+  tool: {
+    key: string;
+    label: string | null;
+    description: string | null;
+    login_notice: string | null;
+  } | null;
+  signup_enabled: boolean;
+  privacy: { text: string; version: string } | null;
+}
+
+/** Dati del form di registrazione */
+export interface RegisterData {
+  username: string;
+  email: string;
+  /** Consenso all'informativa privacy: deve essere true */
+  privacyAccepted: boolean;
+}
+
 /** Stato completo osservabile del client */
 export interface AuthState {
   status: AuthStatus;
   user: HubUser | null;
   token: string | null;
   notice: AuthNotice | null;
-  /** Step del flusso di login ('link' = aperto un magic link, in attesa della conferma) */
-  step: 'email' | 'otp' | 'link';
+  /**
+   * Step del flusso di login: 'link' = aperto un magic link (in attesa della
+   * conferma), 'register' = form di registrazione, 'registered' = registrazione
+   * ricevuta in attesa di approvazione
+   */
+  step: AuthStep;
+  /** Configurazione pubblica del login, null finché non caricata (o se hub non risponde) */
+  toolConfig: ToolConfig | null;
   /** Email a cui è stato chiesto il codice (step 'otp') */
   pendingEmail: string;
   /** Timestamp (ms) dell'ultima richiesta di codice riuscita, per il cooldown del reinvio */
@@ -155,8 +197,23 @@ export interface HubAuthClient {
    * riuscito, incluso il refresh da GET /me.
    */
   adoptSession(session: { token: string; user: Partial<HubUser> & { user_id: string } }): Promise<void>;
-  /** Torna allo step email ("cambia email") */
+  /** Torna allo step email ("cambia email", "ho già un account") */
   resetToEmail(): void;
+  /**
+   * Carica la configurazione pubblica del login (GET /auth/tool-config) in
+   * `toolConfig`. Non lancia mai: se hub non risponde la schermata resta
+   * senza pannello e senza registrazione. Con `force` ricarica anche se già presente.
+   */
+  loadToolConfig(force?: boolean): Promise<void>;
+  /** Apre il form di registrazione (solo se hub la offre per questo tool) */
+  startRegister(): void;
+  /**
+   * Registra un nuovo utente (POST /signup). Con account da approvare passa
+   * allo step 'registered', con account attivo a 'otp' (il codice è già stato
+   * inviato). Lancia HubAuthError (InvalidUsername, InvalidEmail,
+   * PrivacyNotAccepted, SignupDisabled, PrivacyVersionMismatch, 429, rete...).
+   */
+  register(data: RegisterData): Promise<void>;
   /** Ricarica utente e tool da GET /me */
   refresh(): Promise<void>;
   /**
@@ -250,6 +307,26 @@ function sessionFromStorage(raw: unknown): StoredSession | null {
   return obj.v === 1 && typeof obj.token === 'string' && obj.token ? (obj as StoredSession) : null;
 }
 
+/** Valida il body di GET /auth/tool-config; null se la forma non è quella attesa */
+function toolConfigFromBody(body: unknown): ToolConfig | null {
+  if (!body || typeof body !== 'object') return null;
+  const obj = body as Record<string, any>;
+  if (typeof obj.signup_enabled !== 'boolean') return null;
+  const str = (v: unknown) => (typeof v === 'string' && v ? v : null);
+  const tool = obj.tool && typeof obj.tool === 'object' && typeof obj.tool.key === 'string'
+    ? {
+      key: obj.tool.key as string,
+      label: str(obj.tool.label),
+      description: str(obj.tool.description),
+      login_notice: str(obj.tool.login_notice),
+    }
+    : null;
+  const privacy = obj.privacy && typeof obj.privacy.text === 'string' && typeof obj.privacy.version === 'string'
+    ? { text: obj.privacy.text as string, version: obj.privacy.version as string }
+    : null;
+  return { tool, signup_enabled: obj.signup_enabled, privacy };
+}
+
 /** Parametro del fragment che porta il token del magic link (#hub_otp=...) */
 const LINK_PARAM = 'hub_otp';
 
@@ -300,6 +377,7 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
     token: null,
     notice: null,
     step: 'email',
+    toolConfig: null,
     pendingEmail: '',
     otpRequestedAt: null,
     loading: false,
@@ -571,6 +649,80 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
     set({ step: 'email', notice: null });
   }
 
+  // ── Configurazione pubblica e registrazione ────────────────────────────────
+
+  /** Richiesta in corso di GET /auth/tool-config: evita chiamate doppie */
+  let toolConfigRequest: Promise<void> | null = null;
+
+  async function fetchToolConfig(): Promise<void> {
+    try {
+      const query = config.tool ? `?tool=${encodeURIComponent(config.tool)}` : '';
+      const res = await doFetch(url(`auth/tool-config${query}`));
+      if (!res.ok) return;
+      const parsed = toolConfigFromBody(await res.json().catch(() => null));
+      if (parsed) set({ toolConfig: parsed });
+    } catch {
+      // hub non raggiungibile o non aggiornato: login senza pannello né registrazione
+    }
+  }
+
+  function loadToolConfig(force = false): Promise<void> {
+    if (state.toolConfig && !force) return Promise.resolve();
+    if (!toolConfigRequest) {
+      // .finally gira dopo l'assegnazione: la richiesta si libera sempre, anche su errore
+      toolConfigRequest = fetchToolConfig().finally(() => { toolConfigRequest = null; });
+    }
+    return toolConfigRequest;
+  }
+
+  function startRegister(): void {
+    if (!state.toolConfig?.signup_enabled) return;
+    set({ step: 'register', notice: null });
+  }
+
+  async function register(data: RegisterData): Promise<void> {
+    const privacy = state.toolConfig?.privacy;
+    if (!state.toolConfig?.signup_enabled || !privacy) {
+      throw new HubAuthError('La registrazione non è disponibile.', 403, 'SignupDisabled');
+    }
+    const username = data.username.trim();
+    const email = data.email.trim().toLowerCase();
+    if (username.length < 2) {
+      throw new HubAuthError('Inserisci un nome utente di almeno 2 caratteri.', 400, 'InvalidUsername');
+    }
+    if (!EMAIL_RE.test(email)) {
+      throw new HubAuthError('Indirizzo email non valido.', 400, 'InvalidEmail');
+    }
+    if (!data.privacyAccepted) {
+      throw new HubAuthError("È necessario accettare l'informativa privacy.", 400, 'PrivacyNotAccepted');
+    }
+
+    set({ loading: true, notice: null });
+    try {
+      const body: Record<string, unknown> = {
+        username, email, privacy_accepted: true, privacy_version: privacy.version,
+      };
+      if (config.tool) body.tool = config.tool;
+      const result = await publicPost<{ status?: string }>('signup', body);
+      if (result?.status === 'active') {
+        // Account attivo subito: hub ha già inviato il codice, si prosegue come un login
+        set({ step: 'otp', pendingEmail: email, otpRequestedAt: Date.now() });
+        pollSsoWhileWaiting();
+      } else {
+        set({ step: 'registered', pendingEmail: email });
+      }
+    } catch (err) {
+      // Testo privacy cambiato o registrazione chiusa nel frattempo: si riallinea
+      // la configurazione, così il form mostra subito il testo/stato corretto
+      if (err instanceof HubAuthError && (err.code === 'PrivacyVersionMismatch' || err.code === 'SignupDisabled')) {
+        void loadToolConfig(true);
+      }
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  }
+
   // ── SSO ────────────────────────────────────────────────────────────────────
 
   /**
@@ -780,6 +932,9 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
     cancelLink,
     adoptSession,
     resetToEmail: () => set({ step: 'email', pendingEmail: '', otpRequestedAt: null }),
+    loadToolConfig,
+    startRegister,
+    register,
     refresh,
     logout,
     forceLogout,

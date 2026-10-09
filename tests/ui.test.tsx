@@ -191,7 +191,10 @@ describe('LinkStep (magic link)', () => {
 
     expect(await screen.findByRole('button', { name: 'Accedi' })).toBeTruthy();
     expect(screen.queryByText('contenuto protetto')).toBeNull();
-    expect(fetch).not.toHaveBeenCalled();
+    // Il token non viene consumato: l'unica chiamata ammessa è la configurazione
+    // pubblica del login (dalla 1.3.0), che non porta alcun dato dell'utente
+    const chiamate = fetch.mock.calls.map(([input]) => String(input).replace(BASE, ''));
+    expect(chiamate.filter((path) => path !== 'auth/tool-config')).toEqual([]);
   });
 
   it('al clic apre la sessione e mostra il contenuto', async () => {
