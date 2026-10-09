@@ -167,7 +167,7 @@ Quando c'è qualcosa da mostrare, la schermata si divide: **pannello a sinistra*
 
 `layout` controlla la scelta: `'auto'` (default, due metà solo se c'è un pannello), `'split'` (sempre) o `'centered'` (sempre la sola card centrata, come nella 1.2). Senza pannello il DOM è identico a quello della 1.2: nessuna app esistente cambia aspetto finché non ha una descrizione, un avviso o una `aside`.
 
-Tema del pannello: variabili `--hub-auth-aside-bg` (default: il colore primario), `--hub-auth-aside-text` e `--hub-auth-aside-padding`; classi `hub-auth--split`, `hub-auth__aside`, `hub-auth__aside-title`, `hub-auth__aside-text`, `hub-auth__aside-notice`. Il pannello definito dal database compare dopo la risposta di `/auth/tool-config` (con una breve dissolvenza); per averlo dal primo istante usare la prop `aside`.
+Tema del pannello: di default segue il tema dell'app (tinta leggera del primario sopra lo sfondo della card, testo e bordo del tema). Variabili `--hub-auth-aside-bg`, `--hub-auth-aside-text`, `--hub-auth-aside-border` e `--hub-auth-aside-padding`; classi `hub-auth--split`, `hub-auth__aside`, `hub-auth__aside-title`, `hub-auth__aside-text`, `hub-auth__aside-notice`. Il pannello definito dal database compare dopo la risposta di `/auth/tool-config` (con una breve dissolvenza); per averlo dal primo istante usare la prop `aside`.
 
 ## Personalizzazione
 

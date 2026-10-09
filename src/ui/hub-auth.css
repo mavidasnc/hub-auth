@@ -32,9 +32,13 @@
   --hub-auth-radius: 12px;
   --hub-auth-radius-sm: 8px;
   --hub-auth-card-width: 400px;
-  /* Pannello laterale del layout a due metà (dalla 1.3.0) */
-  --hub-auth-aside-bg: var(--hub-auth-primary);
-  --hub-auth-aside-text: #ffffff;
+  /* Pannello laterale del layout a due metà (dalla 1.3.0). Di default usa i colori
+   * già definiti dal tema dell'app: una tinta del primario sopra lo sfondo della
+   * card, con il testo e il bordo di sempre. Così il contrasto è quello del tema
+   * (chiaro o scuro) con qualsiasi colore primario. */
+  --hub-auth-aside-bg: color-mix(in srgb, var(--hub-auth-primary) 12%, var(--hub-auth-card-bg));
+  --hub-auth-aside-text: var(--hub-auth-text);
+  --hub-auth-aside-border: var(--hub-auth-card-border);
   --hub-auth-aside-padding: 48px;
 
   box-sizing: border-box;
@@ -324,6 +328,7 @@
   padding: var(--hub-auth-aside-padding) 24px;
   background: var(--hub-auth-aside-bg);
   color: var(--hub-auth-aside-text);
+  border-top: 1px solid var(--hub-auth-aside-border);
   animation: hub-auth-aside-in 0.25s ease-out;
 }
 
@@ -347,15 +352,16 @@
   margin: 0;
   font-size: 1.05rem;
   line-height: 1.6;
-  opacity: 0.92;
+  opacity: 0.82;
   white-space: pre-line;
 }
 
 .hub-auth__aside-notice {
   margin: 0;
   padding: 12px 14px;
+  border-left: 3px solid var(--hub-auth-primary);
   border-radius: var(--hub-auth-radius-sm);
-  background: rgb(255 255 255 / 0.16);
+  background: color-mix(in srgb, var(--hub-auth-primary) 16%, transparent);
   font-size: 0.925rem;
   white-space: pre-line;
 }
@@ -378,6 +384,8 @@
 
   .hub-auth__aside {
     padding: var(--hub-auth-aside-padding);
+    border-top: 0;
+    border-right: 1px solid var(--hub-auth-aside-border);
   }
 }
 

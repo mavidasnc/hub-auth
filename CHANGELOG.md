@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.1 — 2026-10-09
+
+- **Pannello laterale in tema con l'app**: il pannello del layout a due metà non usa più il colore primario a tinta unita con testo bianco (illeggibile con primari chiari come il verde neon di Slide-orama). Ora lo sfondo è una tinta leggera del primario sopra lo sfondo della card, il testo e il bordo sono quelli del tema, l'avviso ha una barra colorata a sinistra. Funziona con temi chiari e scuri senza configurazione. Nuova variabile `--hub-auth-aside-border`; i default di `--hub-auth-aside-bg` e `--hub-auth-aside-text` cambiano (restano sovrascrivibili).
+
 ## 1.3.0 — 2026-10-09
 
 Richiede hub ≥ 0.216.0 per registrazione e pannello (con un hub più vecchio `GET auth/tool-config` non esiste: il client lo ignora e il login resta quello di prima, senza link di registrazione né pannello).
