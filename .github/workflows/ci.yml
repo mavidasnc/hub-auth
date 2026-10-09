@@ -1,0 +1,38 @@
+name: CI
+
+# Controlli su ogni push e pull request: tipi, test e build della libreria.
+# Non pubblica nulla: le app installano hub-auth da git (tag semver) e dist/ e'
+# versionato, quindi prima di taggare una versione ricordare di rifare `npm run build`.
+
+on:
+  push:
+    branches: [main]
+  pull_request: {}
+
+permissions:
+  contents: read
+
+jobs:
+  verifica:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del codice
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Installazione dipendenze
+        run: npm ci
+
+      - name: Controllo dei tipi
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build

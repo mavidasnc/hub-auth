@@ -102,9 +102,18 @@ export function RegisterStep({ messages: custom }: RegisterStepProps) {
     {paragraphs.length > 0 && (
       <section className="hub-auth__privacy" aria-label={messages.privacyTitle}>
         <h3 className="hub-auth__privacy-title">{messages.privacyTitle}</h3>
-        {paragraphs.map((text, index) => (
-          <p key={index} className="hub-auth__privacy-text">{text}</p>
-        ))}
+        {paragraphs.map((text, index) => {
+          // Un paragrafo "Titolo\ntesto" mostra il titolo su una riga propria, in grassetto
+          const [first, ...rest] = text.split('\n');
+          return rest.length > 0 ? (
+            <p key={index} className="hub-auth__privacy-text">
+              <strong className="hub-auth__privacy-heading">{first.trim()}</strong>
+              {rest.join(' ').trim()}
+            </p>
+          ) : (
+            <p key={index} className="hub-auth__privacy-text">{text}</p>
+          );
+        })}
       </section>
     )}
     </>

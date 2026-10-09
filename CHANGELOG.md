@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.1 — 2026-10-09
+
+- **Informativa privacy**: un paragrafo nel formato `Titolo` + a capo + testo mostra il titolo su una riga propria, in grassetto (prima titolo e testo si fondevano in un'unica riga).
+
 ## 1.4.0 — 2026-10-09
 
 - **Larghezza massima del layout a due metà**: le due metà stanno in un contenitore centrato largo al massimo 1200px (variabile `--hub-auth-split-max-width`), con bordo, angoli arrotondati e ombra, invece di allargarsi a tutto lo schermo: su un monitor 4K il pannello e il login non sono più lontani. Sotto i 900px non cambia nulla (login sopra, pannello sotto, a tutta larghezza). **Modifica visibile**: il DOM del layout diviso ha un elemento in più (`div.hub-auth__split` fra `.hub-auth` e le due metà).

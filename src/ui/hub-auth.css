@@ -281,6 +281,12 @@
   margin: 0 0 10px;
 }
 
+.hub-auth__privacy-heading {
+  display: block;
+  color: var(--hub-auth-text);
+  font-weight: 600;
+}
+
 .hub-auth__privacy-text:last-child {
   margin-bottom: 0;
 }

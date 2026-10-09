@@ -549,4 +549,18 @@ describe('UI: logo nel pannello, contenitore e informativa sotto il form (1.4.0)
     expect(informativa.querySelector('h3')!.textContent).toBe('Informativa sulla privacy');
     expect(informativa.querySelectorAll('p')).toHaveLength(2);
   });
+
+  it('un paragrafo con titolo mostra il titolo in grassetto su una riga propria', async () => {
+    const conTitoli = { ...CONFIG_APERTA, privacy: { text: 'Titolare\nIl titolare è Mavida.\n\nAccettando dichiari di aver letto.', version: 'v9' } };
+    monta({ config: () => json(200, conTitoli) });
+    fireEvent.click(await screen.findByRole('button', { name: 'Non hai un account? Registrati' }));
+    await screen.findByLabelText('Nome utente');
+
+    const informativa = screen.getByRole('region', { name: 'Informativa sulla privacy' });
+    const titolo = informativa.querySelector('strong.hub-auth__privacy-heading');
+    expect(titolo!.textContent).toBe('Titolare');
+    expect(titolo!.parentElement!.textContent).toBe('TitolareIl titolare è Mavida.');
+    // il paragrafo senza titolo resta un semplice paragrafo
+    expect(informativa.querySelectorAll('strong')).toHaveLength(1);
+  });
 });
