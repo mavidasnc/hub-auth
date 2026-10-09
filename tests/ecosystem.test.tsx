@@ -197,6 +197,22 @@ describe('EcosystemMenu', () => {
     expect(screen.queryAllByRole('link')).toHaveLength(0);
   });
 
+  it('variante inline: elenco nel flusso, senza frasi e che resta aperto al clic fuori', () => {
+    const { container } = render(<div><EcosystemMenu current="fleet" variant="inline" /><p>fuori</p></div>);
+    expect(container.querySelector('.hub-auth-eco--inline')).not.toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /App Mavida/ }));
+    fireEvent.mouseDown(screen.getByText('fuori'));
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    // Nessuna chiusura automatica: l'elenco sta nella sidebar, non è una tendina
+    expect(screen.getAllByRole('link')).toHaveLength(5);
+    expect(screen.getByRole('link', { name: /Wandly/ }).getAttribute('title')).toBe(ECOSYSTEM_APPS[0].tagline);
+    // Il pulsante lo richiude
+    fireEvent.click(screen.getByRole('button', { name: /App Mavida/ }));
+    expect(screen.queryAllByRole('link')).toHaveLength(0);
+  });
+
   it('tema scuro, allineamento e etichetta si personalizzano', () => {
     const { container } = render(<EcosystemMenu current="fleet" theme="dark" align="end" label="Altre app" />);
 

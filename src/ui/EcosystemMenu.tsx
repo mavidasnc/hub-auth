@@ -3,8 +3,10 @@
  *
  * - `EcosystemNav`: elenco di link in un `<nav>`, per il footer del login e per le
  *   pagine pubbliche. Sono link normali (visibili anche ai crawler).
- * - `EcosystemMenu`: pulsante con tendina da mettere nell'header o nella sidebar
- *   di un'app dopo il login. Si chiude con Esc o con un clic fuori.
+ * - `EcosystemMenu`: pulsante con elenco da mettere nell'header o nella sidebar di
+ *   un'app dopo il login. Due varianti: 'dropdown' (default, tendina assoluta per un
+ *   header) e 'inline' (elenco nel flusso, per sidebar con overflow nascosto, dove una
+ *   tendina verrebbe tagliata). Si chiude con Esc o con un clic fuori (solo dropdown).
  *
  * Il tema della tendina si cambia con le variabili `--hub-auth-eco-*` o con
  * `theme="dark"`; funziona anche fuori da `.hub-auth` (basta importare ui.css).
@@ -47,7 +49,13 @@ export function EcosystemNav({ current, messages: custom, className = '' }: Ecos
 export interface EcosystemMenuProps {
   /** Chiave dell'app corrente (esclusa dall'elenco); se manca si usa l'host della pagina */
   current?: string;
-  /** 'dark' per le app a tema scuro (default 'light') */
+  /**
+   * 'dropdown' (default): tendina assoluta sotto il pulsante, per un header.
+   * 'inline': elenco nel flusso sotto il pulsante a tutta larghezza, senza frasi, che eredita
+   * colori e font del contenitore: per le sidebar (dalla 1.9.0).
+   */
+  variant?: 'dropdown' | 'inline';
+  /** 'dark' per le app a tema scuro (default 'light'); nella variante inline non serve */
   theme?: 'light' | 'dark';
   /** Da quale lato si apre la tendina rispetto al pulsante (default 'start') */
   align?: 'start' | 'end';
@@ -60,7 +68,7 @@ export interface EcosystemMenuProps {
 }
 
 export function EcosystemMenu({
-  current, theme = 'light', align = 'start', label, messages: custom, className = '',
+  current, variant = 'dropdown', theme = 'light', align = 'start', label, messages: custom, className = '',
 }: EcosystemMenuProps) {
   const messages = mergeMessages(custom);
   const [open, setOpen] = useState(false);
@@ -68,9 +76,10 @@ export function EcosystemMenu({
   const listId = useId();
   const apps = otherApps(current);
 
-  // Chiusura con Esc o con un clic fuori, solo mentre la tendina è aperta
+  // Chiusura con Esc o con un clic fuori, solo mentre la tendina è aperta (nella variante
+  // inline l'elenco resta aperto finché non si richiude il pulsante)
   useEffect(() => {
-    if (!open) return;
+    if (!open || variant === 'inline') return;
     const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false); };
     const onClick = (event: MouseEvent) => {
       if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false);
@@ -81,13 +90,13 @@ export function EcosystemMenu({
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('mousedown', onClick);
     };
-  }, [open]);
+  }, [open, variant]);
 
   if (apps.length === 0) return null;
   return (
     <div
       ref={rootRef}
-      className={`hub-auth-eco hub-auth-eco--${theme} hub-auth-eco--${align} ${className}`.trim()}
+      className={`hub-auth-eco hub-auth-eco--${variant} hub-auth-eco--${theme} hub-auth-eco--${align} ${className}`.trim()}
     >
       <button
         type="button"
@@ -103,7 +112,7 @@ export function EcosystemMenu({
         <ul id={listId} className="hub-auth-eco__list">
           {apps.map((app) => (
             <li key={app.key}>
-              <a href={app.url} className="hub-auth-eco__link" onClick={() => setOpen(false)}>
+              <a href={app.url} title={app.tagline} className="hub-auth-eco__link" onClick={() => setOpen(false)}>
                 <span className="hub-auth-eco__dot" style={{ background: app.color }} aria-hidden="true" />
                 <span className="hub-auth-eco__text">
                   <span className="hub-auth-eco__name">{app.name}</span>

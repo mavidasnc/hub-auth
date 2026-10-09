@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.9.0 — 2026-10-09
+
+- **`EcosystemMenu` con `variant="inline"`**: elenco nel flusso sotto il pulsante a tutta larghezza, senza frasi (restano nel tooltip) e senza chiusura al clic fuori, che eredita colori e font del contenitore. Serve alle sidebar con `overflow: hidden` (Wandly, WooSync, Fleet), dove la tendina assoluta della 1.8.0 verrebbe tagliata. Il default resta `dropdown`. I link dell'elenco hanno ora `title` con la frase dell'app.
+
 ## 1.8.0 — 2026-10-09
 
 Nessun requisito nuovo su hub: tutto è retrocompatibile e le novità sono opt-in. Con hub ≥ 0.221.0 l'informativa ha anche un URL pubblico (`GET /privacy`), da linkare dalle app.

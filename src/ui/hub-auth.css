@@ -390,6 +390,41 @@
   line-height: 1.35;
 }
 
+/* Variante inline (dalla 1.9.0): per le sidebar, elenco nel flusso che eredita colori e font */
+.hub-auth-eco--inline {
+  display: block;
+  width: 100%;
+}
+
+.hub-auth-eco--inline .hub-auth-eco__button {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.hub-auth-eco--inline .hub-auth-eco__list {
+  position: static;
+  min-width: 0;
+  max-width: none;
+  max-height: 14rem;
+  overflow-y: auto;
+  margin-top: 2px;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.hub-auth-eco--inline .hub-auth-eco__link:hover,
+.hub-auth-eco--inline .hub-auth-eco__link:focus-visible {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.hub-auth-eco--inline .hub-auth-eco__tagline {
+  display: none;
+}
+
 /* ── Form di registrazione (dalla 1.3.0) ─────────────────────────────────── */
 
 .hub-auth__heading {

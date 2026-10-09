@@ -196,6 +196,7 @@ import { EcosystemMenu } from '@mavida/hub-auth/ui';
 <EcosystemMenu theme="dark" align="end" />
 ```
 
+- **Nelle sidebar** (con `overflow: hidden` la tendina verrebbe tagliata) usare `<EcosystemMenu variant="inline" />`: l'elenco si apre nel flusso, a tutta larghezza, ereditando colori e font (dalla 1.9.0).
 - `EcosystemNav` è lo stesso elenco come `<nav>` di link, per footer e pagine pubbliche; `ECOSYSTEM_APPS` e `otherApps(current?)` espongono il catalogo (fisso: Wandly, Slide-orama, Social Planner, WooSync, VoiceNote, Fleet; admin e log esclusi).
 - Il login ha ora i landmark `<main>` e `<footer>` (non più `<div>`): se l'app avvolge già `LoginScreen` in un `<main>`, toglierlo.
 
