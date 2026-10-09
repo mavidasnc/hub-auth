@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.0 — 2026-10-09
+
+- **Passo del codice più onesto**: `otp-request` risponde 200 anche a email sconosciute (anti-enumerazione), quindi "Abbiamo inviato un codice a …" poteva essere falso. Il testo di default `codeSentTo` diventa "Se {email} è registrato, riceverai un codice via email." (sovrascrivibile con `messages`). **Modifica visibile**: chi confronta quel testo nei test deve aggiornarlo.
+- **Link "Registrati" nel passo del codice**: quando hub offre la registrazione, sotto "Cambia email" e "Reinvia codice" compare "Non hai un account? Registrati" (stessa prop `signup={false}` per nasconderlo; `OtpStep` ha ora la prop `signup`). Il form di registrazione parte con l'email già scritta nel passo precedente.
+- Richiede hub ≥ 0.218.0 per l'email "hai già un account" a chi si registra con un indirizzo già presente (con un hub più vecchio il client funziona ugualmente).
+
 ## 1.5.0 — 2026-10-09
 
 - **Informativa privacy in una modale**: il testo completo non è più stampato sotto il form di registrazione. Si apre con un `<dialog>` nativo (focus trap, Esc, sfondo oscurato) dal link "informativa sulla privacy" nella frase del consenso oppure dal pulsante "Visualizza il testo completo dell'informativa" sotto la casella. La modale ha "Chiudi" e "Accetto l'informativa" (chiude e spunta la casella); un clic sullo sfondo la chiude e il focus torna al pulsante che l'ha aperta. Il consenso resta la casella: aprire la modale non lo dà da solo.

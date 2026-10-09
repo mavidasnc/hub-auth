@@ -18,6 +18,8 @@ export interface OtpStepProps {
   messages?: Partial<HubAuthMessages>;
   /** Secondi di attesa prima di poter reinviare il codice (default 60) */
   resendCooldown?: number;
+  /** Mostra il link "Registrati" quando hub offre la registrazione (default true) */
+  signup?: boolean;
 }
 
 /** Secondi mancanti al reinvio, aggiornati ogni secondo */
@@ -41,9 +43,11 @@ function useCooldown(since: number | null, seconds: number): number {
   return remaining;
 }
 
-export function OtpStep({ messages: custom, resendCooldown = 60 }: OtpStepProps) {
+export function OtpStep({ messages: custom, resendCooldown = 60, signup = true }: OtpStepProps) {
   const messages = mergeMessages(custom);
-  const { verifyOtp, requestOtp, resetToEmail, pendingEmail, otpRequestedAt, loading } = useHubAuth();
+  const {
+    verifyOtp, requestOtp, resetToEmail, startRegister, pendingEmail, otpRequestedAt, toolConfig, loading,
+  } = useHubAuth();
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
@@ -126,6 +130,16 @@ export function OtpStep({ messages: custom, resendCooldown = 60 }: OtpStepProps)
           {remaining > 0 ? format(messages.resendIn, { seconds: remaining }) : messages.resend}
         </button>
       </div>
+
+      {/* Otp-request risponde allo stesso modo per email sconosciute (anti-enumerazione):
+          chi non riceve nulla trova qui la strada della registrazione */}
+      {signup && toolConfig?.signup_enabled && (
+        <div className="hub-auth__links hub-auth__links--center">
+          <button className="hub-auth__link" type="button" onClick={startRegister} disabled={loading}>
+            {messages.signupLink}
+          </button>
+        </div>
+      )}
     </form>
   );
 }

@@ -15,9 +15,10 @@ import { errorMessage, mergeMessages } from './messages.js';
 import { PrivacyDialog } from './PrivacyDialog.js';
 export function RegisterStep({ messages: custom }) {
     const messages = mergeMessages(custom);
-    const { register, resetToEmail, toolConfig, loading } = useHubAuth();
+    const { register, resetToEmail, toolConfig, pendingEmail, loading } = useHubAuth();
     const [username, setUsername] = useState('');
-    const [email, setEmail] = useState('');
+    // Chi arriva dal passo del codice ha già scritto l'email: non va riscritta
+    const [email, setEmail] = useState(pendingEmail);
     const [accepted, setAccepted] = useState(false);
     const [error, setError] = useState('');
     const [privacyOpen, setPrivacyOpen] = useState(false);

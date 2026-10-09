@@ -141,6 +141,8 @@ Il testo dell'informativa privacy sta su hub (`content/privacy_registrazione.txt
 
 Dalla 1.5.0 il testo non è stampato sotto il form ma in una **modale** (`<dialog>` nativo), che si apre dal link "informativa sulla privacy" nella frase del consenso o dal pulsante "Visualizza il testo completo dell'informativa". "Accetto l'informativa" chiude la modale e spunta la casella; "Chiudi", Esc o un clic sullo sfondo la chiudono senza dare il consenso. Nei testi, `privacyLabel` usa `{link}` per il punto in cui compare il pulsante (`privacyLinkText`).
 
+Il link "Non hai un account? Registrati" compare sia nel primo passo (email) sia nel passo del codice (1.6.0), dove il testo è neutro ("Se {email} è registrato, riceverai un codice via email.") perché hub non rivela se l'indirizzo esiste; il form si apre con l'email già scritta. Se ci si registra con un indirizzo già presente, hub non crea nulla, risponde come per un indirizzo nuovo e scrive al titolare ("Hai già un account", hub ≥ 0.218.0).
+
 Dal codice:
 
 ```tsx

@@ -11,5 +11,7 @@ export interface OtpStepProps {
     messages?: Partial<HubAuthMessages>;
     /** Secondi di attesa prima di poter reinviare il codice (default 60) */
     resendCooldown?: number;
+    /** Mostra il link "Registrati" quando hub offre la registrazione (default true) */
+    signup?: boolean;
 }
-export declare function OtpStep({ messages: custom, resendCooldown }: OtpStepProps): import("react").JSX.Element;
+export declare function OtpStep({ messages: custom, resendCooldown, signup }: OtpStepProps): import("react").JSX.Element;

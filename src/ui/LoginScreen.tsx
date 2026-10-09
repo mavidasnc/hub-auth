@@ -101,7 +101,7 @@ export function LoginScreen({
       )}
 
       {step === 'email' && <EmailStep messages={custom} signup={signup} />}
-      {step === 'otp' && <OtpStep messages={custom} resendCooldown={resendCooldown} />}
+      {step === 'otp' && <OtpStep messages={custom} resendCooldown={resendCooldown} signup={signup} />}
       {step === 'link' && <LinkStep messages={custom} />}
       {step === 'register' && <RegisterStep messages={custom} />}
       {step === 'registered' && <RegisteredStep messages={custom} />}

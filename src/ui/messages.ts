@@ -62,7 +62,7 @@ export const defaultMessages: HubAuthMessages = {
   sendCode: 'Invia codice',
   sending: 'Invio in corso...',
   codeHint: "Riceverai un codice di 6 cifre via email, valido per 10 minuti.",
-  codeSentTo: 'Abbiamo inviato un codice a {email}',
+  codeSentTo: 'Se {email} è registrato, riceverai un codice via email.',
   digitLabel: 'Cifra {index} del codice',
   verify: 'Verifica codice',
   verifying: 'Verifica in corso...',

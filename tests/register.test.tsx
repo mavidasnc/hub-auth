@@ -450,7 +450,7 @@ describe('UI: registrazione', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Registrati' }));
 
-    expect(await screen.findByText('Abbiamo inviato un codice a mario@esempio.com')).toBeTruthy();
+    expect(await screen.findByText('Se mario@esempio.com è registrato, riceverai un codice via email.')).toBeTruthy();
   });
 
   it('informativa aggiornata: messaggio chiaro e consenso da ridare', async () => {
@@ -498,6 +498,52 @@ describe('UI: registrazione', () => {
     monta({ config: () => json(200, CONFIG_APERTA) }, { messages: { signupLink: 'Sign up' } });
 
     expect(await screen.findByRole('button', { name: 'Sign up' })).toBeTruthy();
+  });
+
+  describe('passo del codice (1.6.0)', () => {
+    /** Dal login con un'email arriva al passo del codice (otp-request risponde 200 a tutti) */
+    const arrivaAlCodice = async (props: Parameters<typeof LoginScreen>[0] = {}, config = CONFIG_APERTA) => {
+      monta({ config: () => json(200, config) }, props);
+      await screen.findByRole('button', { name: 'Non hai un account? Registrati' });
+      fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'sconosciuto@esempio.com' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Invia codice' }));
+      await screen.findByText('Se sconosciuto@esempio.com è registrato, riceverai un codice via email.');
+    };
+
+    it('il testo non afferma che il codice è stato inviato', async () => {
+      await arrivaAlCodice();
+
+      expect(screen.queryByText(/Abbiamo inviato/)).toBeNull();
+    });
+
+    it('mostra il link "Registrati" e porta al form con l\'email già scritta', async () => {
+      await arrivaAlCodice();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Non hai un account? Registrati' }));
+
+      expect(await screen.findByRole('heading', { name: 'Crea il tuo account' })).toBeTruthy();
+      expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('sconosciuto@esempio.com');
+    });
+
+    it('con signup={false} il link non compare', async () => {
+      monta({ config: () => json(200, CONFIG_APERTA) }, { signup: false });
+      // Prima la configurazione di hub: il pannello rimonta il form e perderebbe quanto scritto
+      await screen.findByText('Wandly');
+      fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'a@esempio.com' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Invia codice' }));
+      await screen.findByText('Se a@esempio.com è registrato, riceverai un codice via email.');
+
+      expect(screen.queryByRole('button', { name: 'Non hai un account? Registrati' })).toBeNull();
+    });
+
+    it('con la registrazione chiusa su hub il link non compare', async () => {
+      monta({ config: () => json(200, CONFIG_CHIUSA) });
+      fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'a@esempio.com' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Invia codice' }));
+      await screen.findByText('Se a@esempio.com è registrato, riceverai un codice via email.');
+
+      expect(screen.queryByRole('button', { name: 'Non hai un account? Registrati' })).toBeNull();
+    });
   });
 });
 

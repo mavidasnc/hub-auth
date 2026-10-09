@@ -20,9 +20,10 @@ export interface RegisterStepProps {
 
 export function RegisterStep({ messages: custom }: RegisterStepProps) {
   const messages = mergeMessages(custom);
-  const { register, resetToEmail, toolConfig, loading } = useHubAuth();
+  const { register, resetToEmail, toolConfig, pendingEmail, loading } = useHubAuth();
   const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
+  // Chi arriva dal passo del codice ha già scritto l'email: non va riscritta
+  const [email, setEmail] = useState(pendingEmail);
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState('');
   const [privacyOpen, setPrivacyOpen] = useState(false);
