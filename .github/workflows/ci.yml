@@ -1,12 +1,15 @@
 name: CI
 
-# Controlli su ogni push e pull request: tipi, test e build della libreria.
+# Controlli su ogni push e pull request, e sui tag di versione: tipi, lint, test e build.
 # Non pubblica nulla: le app installano hub-auth da git (tag semver) e dist/ e'
-# versionato, quindi prima di taggare una versione ricordare di rifare `npm run build`.
+# versionato. Dopo la build `git diff --exit-code dist/` fallisce se dist/ committato
+# non coincide con quello che la build produce dai sorgenti (versione dimenticata o
+# vecchia): sui tag e' il controllo che impedisce di rilasciare un dist/ stantio.
 
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request: {}
 
 permissions:
@@ -31,8 +34,14 @@ jobs:
       - name: Controllo dei tipi
         run: npm run typecheck
 
+      - name: Lint
+        run: npm run lint
+
       - name: Test
         run: npm test
 
       - name: Build
         run: npm run build
+
+      - name: dist/ coincide con i sorgenti
+        run: git diff --exit-code dist/

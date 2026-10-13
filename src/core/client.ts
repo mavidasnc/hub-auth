@@ -268,6 +268,34 @@ function bearerOf(header: unknown): string | null {
   return typeof header === 'string' && header.startsWith('Bearer ') ? header.slice(7) : null;
 }
 
+/** href della pagina corrente (base per risolvere URL relativi); undefined fuori dal browser */
+function pageHref(): string | undefined {
+  return typeof window !== 'undefined' ? window.location.href : undefined;
+}
+
+/** Origine di un URL (relativo alla pagina corrente); null se non interpretabile o opaca */
+function originOf(target: string): string | null {
+  try {
+    const origin = new URL(target, pageHref()).origin;
+    return origin === 'null' ? null : origin;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * URL finale di una richiesta axios, risolto come fa axios: un `url` assoluto
+ * (anche protocol-relative) ignora `baseURL`, uno relativo si somma a `baseURL`.
+ */
+function axiosTarget(baseURL: unknown, target: unknown): string | null {
+  try {
+    const root = new URL(typeof baseURL === 'string' ? baseURL : '', pageHref());
+    return new URL(typeof target === 'string' ? target : '', root).href;
+  } catch {
+    return null;
+  }
+}
+
 /** Normalizza il body di GET /me in HubUser */
 function userFromMe(body: Record<string, unknown>): HubUser {
   const str = (v: unknown) => (typeof v === 'string' ? v : null);
@@ -430,6 +458,19 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
     return /^https?:\/\//i.test(path) ? path : `${base}${path.replace(/^\/+/, '')}`;
   }
 
+  /** Origine di hub (da baseUrl); null se baseUrl non è interpretabile */
+  const hubOrigin = originOf(base);
+
+  /**
+   * Il Bearer va solo a hub: un URL assoluto verso un'altra origine non deve
+   * mai ricevere il token (una XSS o un link costruito ad arte lo esporrebbe).
+   * Fail-closed: se l'origine non si determina, il token non viene allegato.
+   */
+  function isHubUrl(target: string | null): boolean {
+    if (!hubOrigin || !target) return false;
+    return originOf(target) === hubOrigin;
+  }
+
   /**
    * POST JSON su un endpoint pubblico di login; lancia HubAuthError sugli errori.
    * @param credentials - invia/riceve i cookie (serve a hub per impostare il cookie SSO)
@@ -505,13 +546,84 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
     // Il token va catturato prima della pulizia locale per poterlo revocare
     const token = state.token;
     forceLogout(reason);
-    if (token) {
-      doFetch(url(global ? 'logout?scope=global' : 'logout'), {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        // Il cookie SSO viaggia (e viene cancellato) solo con le credenziali
-        ...(global ? { credentials: 'include' as const } : {}),
-      }).catch(() => undefined);
+    if (token) revokeToken(token, global);
+    // Logout voluto dall'utente: le altre schede dello stesso browser escono con lui
+    if (!reason) announce('logout');
+  }
+
+  /**
+   * Revoca il token su hub (best effort). Con `global` chiede anche di cancellare
+   * il cookie SSO, e per questo viaggia con le credenziali: se l'origine dell'app
+   * non è in SSO_ALLOWED_ORIGINS il browser blocca la richiesta già al preflight
+   * (errore di rete, nulla è stato inviato). In quel caso si ripete senza
+   * credenziali, così almeno il token viene revocato, e si avvisa in console.
+   */
+  function revokeToken(token: string, global: boolean): void {
+    const headers = { Authorization: `Bearer ${token}` };
+    doFetch(url(global ? 'logout?scope=global' : 'logout'), {
+      method: 'POST',
+      headers,
+      // Il cookie SSO viaggia (e viene cancellato) solo con le credenziali
+      ...(global ? { credentials: 'include' as const } : {}),
+    }).catch((err) => {
+      if (!global) return undefined;
+      console.warn('[hub-auth] logout globale non riuscito, revoca solo del token:', err);
+      return doFetch(url('logout'), { method: 'POST', headers }).catch(() => undefined);
+    });
+  }
+
+  // ── Sincronizzazione fra schede ────────────────────────────────────────────
+
+  /**
+   * Canale fra le schede dello stesso browser e della stessa app (stessa
+   * `storageKey`). Non si usa l'evento `storage`: non scatta con IndexedDB né
+   * con lo storage in memoria. Il messaggio non trasporta mai il token.
+   */
+  let channel: BroadcastChannel | null = null;
+  if (typeof BroadcastChannel !== 'undefined') {
+    try {
+      channel = new BroadcastChannel(`hub-auth:${config.storageKey}`);
+      channel.onmessage = (event: MessageEvent) => {
+        const type = (event.data as { type?: string } | null)?.type;
+        if (type === 'logout') {
+          const token = state.token;
+          if (!token) return;
+          // Uscita locale senza ritrasmettere (niente rimbalzo) e revoca del token di questa scheda
+          forceLogout();
+          revokeToken(token, false);
+        } else if (type === 'login') {
+          void adoptFromOtherTab();
+        }
+      };
+    } catch {
+      channel = null;
+    }
+  }
+
+  function announce(type: 'login' | 'logout'): void {
+    try {
+      channel?.postMessage({ type });
+    } catch {
+      // Canale chiuso o non disponibile: le altre schede si allineeranno al prossimo avvio
+    }
+  }
+
+  /** Un'altra scheda ha fatto il login: se questa è senza sessione la riprende dallo storage o dal cookie SSO */
+  async function adoptFromOtherTab(): Promise<void> {
+    if (state.token) return;
+    try {
+      const session = sessionFromStorage(await storage.get(config.storageKey));
+      if (session && !state.token) {
+        openSession(session.token, session.user);
+        set({ step: 'email', pendingEmail: '', otpRequestedAt: null });
+        await refresh();
+        return;
+      }
+    } catch {
+      // Storage non leggibile: si prova il cookie SSO
+    }
+    if (config.sso && !state.token && (await trySso(true))) {
+      set({ step: 'email', pendingEmail: '', otpRequestedAt: null });
     }
   }
 
@@ -608,6 +720,7 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
       }
       openSession(data.session_token, partialUser(data.user_id, data.email ?? email));
       set({ step: 'email', pendingEmail: '', otpRequestedAt: null });
+      announce('login');
       // Profilo, ruolo e tool arrivano da /me (con le stesse regole del boot)
       await refresh();
     } finally {
@@ -629,6 +742,7 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
       linkToken = null;
       openSession(data.session_token, partialUser(data.user_id, data.email ?? null));
       set({ step: 'email', pendingEmail: '', otpRequestedAt: null });
+      announce('login');
       await refresh();
     } catch (err) {
       // Link morto (401: sconosciuto, scaduto, già usato) o accesso negato: inutile
@@ -817,6 +931,7 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
    */
   async function adoptSession(session: { token: string; user: Partial<HubUser> & { user_id: string } }): Promise<void> {
     openSession(session.token, { ...partialUser(session.user.user_id, session.user.email ?? null), ...session.user });
+    announce('login');
     await refresh();
   }
 
@@ -828,10 +943,12 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
 
   async function authFetch(path: string, init: RequestInit = {}): Promise<Response> {
     const headers = new Headers(init.headers);
-    if (state.token && !headers.has('Authorization')) {
+    const target = url(path);
+    // Bearer solo verso l'origine di hub (vedi isHubUrl); gli altri URL passano senza token
+    if (state.token && !headers.has('Authorization') && isHubUrl(target)) {
       headers.set('Authorization', `Bearer ${state.token}`);
     }
-    const res = await doFetch(url(path), { ...init, headers });
+    const res = await doFetch(target, { ...init, headers });
     if (res.status === 401) handleUnauthorized(bearerOf(headers.get('Authorization')));
     return res;
   }
@@ -843,6 +960,8 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
 
     const requestId = instance.interceptors.request.use((cfg) => {
       if (!state.token) return cfg;
+      // Bearer solo se la richiesta (baseURL + url, come li risolve axios) va a hub
+      if (!isHubUrl(axiosTarget(cfg.baseURL, cfg.url))) return cfg;
       cfg.headers = cfg.headers ?? {};
       if (!readHeader(cfg.headers, 'Authorization')) {
         if (typeof cfg.headers.set === 'function') cfg.headers.set('Authorization', `Bearer ${state.token}`);

@@ -19,6 +19,8 @@ function fakeFetch(routes: Record<string, () => Response | Promise<Response>>) {
   return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input).replace(BASE, '');
     const key = `${init?.method ?? 'GET'} ${url}`;
+    // URL fuori da BASE (test sull'origine del Bearer): risposta vuota
+    if (!String(input).startsWith(BASE) && !routes[key]) return json(200, {});
     const handler = routes[key];
     if (!handler) throw new Error(`rotta non prevista: ${key}`);
     return handler();
@@ -290,10 +292,26 @@ describe('logout e 401', () => {
     expect(auth.getState().notice).toBe('session_expired');
   });
 
-  it('authFetch accetta URL assoluti', async () => {
+  it('url() lascia invariati gli URL assoluti e risolve i relativi su hub', async () => {
     const { auth } = await loggedIn();
     expect(auth.url('https://altro.test/x')).toBe('https://altro.test/x');
     expect(auth.url('/me')).toBe(`${BASE}me`);
+  });
+
+  it("authFetch allega il Bearer a un URL assoluto sull'origine di hub", async () => {
+    const { auth, fetch } = await loggedIn({ 'GET other': () => json(200, {}) });
+    await auth.authFetch('https://hub.test/altro-percorso');
+    const call = fetch.mock.calls.find(([u]) => String(u) === 'https://hub.test/altro-percorso');
+    expect(new Headers(call?.[1]?.headers).get('Authorization')).toBe('Bearer tok');
+  });
+
+  it("authFetch NON allega il Bearer a un URL di un'altra origine", async () => {
+    const { auth, fetch } = await loggedIn();
+    await auth.authFetch('https://altro.test/x');
+    await auth.authFetch('http://hub.test/v1/me'); // stesso host ma schema diverso: altra origine
+    const calls = fetch.mock.calls.filter(([u]) => /^https?:\/\/(altro\.test|hub\.test\/v1\/me$)/.test(String(u)) && !String(u).startsWith(BASE));
+    expect(calls).toHaveLength(2);
+    for (const [, init] of calls) expect(new Headers(init?.headers).has('Authorization')).toBe(false);
   });
 
   it('un 401 di una richiesta con un token vecchio viene ignorato', async () => {
@@ -346,7 +364,7 @@ describe('installAxiosInterceptors', () => {
     const axios = fakeAxios();
     const uninstall = auth.installAxiosInterceptors(axios);
 
-    const cfg = axios.handlers.request!({ headers: {} });
+    const cfg = axios.handlers.request!({ baseURL: BASE, url: 'blogs/u1', headers: {} });
     expect(cfg.headers.Authorization).toBe('Bearer tok');
 
     await expect(axios.handlers.rejected!({ response: { status: 401 }, config: cfg })).rejects.toBeTruthy();
@@ -362,7 +380,29 @@ describe('installAxiosInterceptors', () => {
     const auth = createHubAuth({ baseUrl: BASE, storageKey: 'k', storage, fetch: fakeFetch({ 'GET me': () => json(200, ME) }) });
     const axios = fakeAxios();
     auth.installAxiosInterceptors(axios);
-    const cfg = axios.handlers.request!({ headers: { Authorization: 'Bearer altro' } });
+    const cfg = axios.handlers.request!({ baseURL: BASE, url: 'x', headers: { Authorization: 'Bearer altro' } });
     expect(cfg.headers.Authorization).toBe('Bearer altro');
+  });
+
+  it('allega il Bearer solo se la richiesta risolta va a hub', async () => {
+    const storage = memoryStorageAdapter();
+    storage.set('k', { v: 1, token: 'tok', user: ME });
+    const auth = createHubAuth({ baseUrl: BASE, storageKey: 'k', storage, fetch: fakeFetch({ 'GET me': () => json(200, ME) }) });
+    const axios = fakeAxios();
+    auth.installAxiosInterceptors(axios);
+    const run = (cfg: Record<string, unknown>) => axios.handlers.request!({ headers: {}, ...cfg }).headers.Authorization;
+
+    // baseURL di hub, anche con un percorso diverso da quello di baseUrl: stessa origine
+    expect(run({ baseURL: 'https://hub.test/altro/v2', url: '/x' })).toBe('Bearer tok');
+    // url assoluto di hub con baseURL altrove: axios ignora baseURL, vale l'url
+    expect(run({ baseURL: 'https://altro.test/api', url: 'https://hub.test/me' })).toBe('Bearer tok');
+    // baseURL altrove
+    expect(run({ baseURL: 'https://altro.test/api', url: '/x' })).toBeUndefined();
+    // url assoluto altrove con baseURL di hub
+    expect(run({ baseURL: BASE, url: 'https://altro.test/x' })).toBeUndefined();
+    // url protocol-relative: axios lo tratta come assoluto
+    expect(run({ baseURL: BASE, url: '//altro.test/x' })).toBeUndefined();
+    // nessun baseURL e url relativo: la richiesta va all'origine della pagina, non a hub
+    expect(run({ url: '/x' })).toBeUndefined();
   });
 });

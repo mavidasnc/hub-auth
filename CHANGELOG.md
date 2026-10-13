@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.11.0 — 2026-10-13
+
+Fase 5 della review del 2026-10-11 (M-6, B-3, B-22). Nessuna modifica all'API pubblica e nessun requisito nuovo su hub; **modifica di comportamento**: il Bearer non viene più allegato alle richieste verso altre origini.
+
+- **Bearer solo verso hub (M-6)**: `authFetch` e gli interceptor axios allegano `Authorization` soltanto se l'URL finale ha la stessa origine di `baseUrl`. Prima un URL assoluto verso qualunque host riceveva il token di sessione (valido 30 giorni). Per axios l'URL è `baseURL` + `url` risolti come fa axios (un `url` assoluto o `//host` ignora `baseURL`); se l'origine non si determina il token non viene allegato. `url()` e `authHeaders()` non cambiano. Un `Authorization` già impostato dal chiamante resta com'è. Il vecchio test "authFetch accetta URL assoluti" verificava solo `url()`: ora ci sono test su `authFetch` e sull'interceptor.
+- **Schede sincronizzate (B-3)**: `BroadcastChannel('hub-auth:<storageKey>')` (nessun token nel messaggio, funziona anche con IndexedDB e storage in memoria). Il logout voluto dall'utente in una scheda fa uscire le altre (`onLogout` compreso, revoca del loro token); un login in una scheda viene ripreso dalle schede senza sessione (dallo storage condiviso o dal cookie SSO). Il logout per sessione scaduta o tool non abilitato resta locale. Senza `BroadcastChannel` nulla cambia.
+- **Token solo in memoria (M-6)**: documentato l'uso di `storage: memoryStorageAdapter()` con `sso: true` (il boot riprende la sessione dal cookie `__Host-`); nessuna nuova opzione. Lo adottano le sole dashboard online.
+- **Logout globale più robusto (B-22)**: se la richiesta con credenziali (`logout?scope=global`) fallisce (origine non in `SSO_ALLOWED_ORIGINS`: il browser la blocca al preflight) si ripete senza credenziali, così almeno il token viene revocato, e si scrive un avviso in console. Prima l'errore era ingoiato e la sessione restava valida.
+- **Igiene (B-22)**: `license` e `repository` in `package.json`; ESLint 9 con `typescript-eslint` e `react-hooks` (`npm run lint`, ora anche in CI: l'`eslint-disable` di `OtpStep.tsx` ora è una regola che esiste davvero); la CI gira anche sui tag `v*` e verifica che `dist/` committato coincida con la build (`git diff --exit-code dist/`).
+- Test: 158 → 169 (origine del Bearer, schede, logout globale).
+
 ## 1.10.0 — 2026-10-09
 
 - **`asideLink`** (`{ href, label }`) in `LoginScreen`: pulsante (CTA) nel pannello di default, sotto l'immagine, ad es. "Approfondisci" verso la pagina `/about/` dell'app. È un link normale (`<a class="hub-auth__aside-cta">`, con freccia che si sposta al passaggio del mouse), quindi visibile e seguibile anche dai motori di ricerca. Colori dal tema (`--hub-auth-primary`). Da solo fa comparire il pannello; con un `aside` personalizzato è ignorato. Ordine nel pannello: logo, titolo, descrizione, avviso, immagine, pulsante.
