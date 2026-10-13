@@ -76,6 +76,19 @@ const api = axios.create({ baseURL: hubAuth.url('') });
 hubAuth.installAxiosInterceptors(api);
 ```
 
+**Il Bearer va solo a hub (1.11.0).** `authFetch` e gli interceptor allegano il token soltanto se l'URL finale ha la stessa origine di `baseUrl`: un URL assoluto verso un altro host passa senza `Authorization` (per axios l'URL è `baseURL` + `url` risolti come fa axios, quindi un `url` assoluto o `//altro.host` ignora `baseURL`). Un `Authorization` già impostato dal chiamante non viene toccato. `authHeaders()` resta esplicito: restituisce sempre l'header, a chi lo usa spetta dirigerlo verso hub.
+
+## Token solo in memoria e schede multiple (1.11.0)
+
+Per un'app solo online (le dashboard) il token può non toccare mai `localStorage`: basta `storage: memoryStorageAdapter()` insieme a `sso: true`. A ogni caricamento della pagina il client non trova sessione e la riprende dal cookie SSO `__Host-` (`POST /sso/session`), quindi l'origine dell'app deve stare in `SSO_ALLOWED_ORIGINS` di hub; senza SSO funzionante l'utente rifà il login a ogni reload. Una XSS non può più leggere un token dallo storage, ma finché la pagina è aperta può usare quello in memoria: la mitigazione resta la CSP.
+
+Le schede della stessa app (stessa `storageKey`) si parlano con un `BroadcastChannel` (`hub-auth:<storageKey>`, senza token nel messaggio, quindi vale anche con IndexedDB e con lo storage in memoria, che non generano l'evento `storage`):
+
+- **logout**: il logout voluto dall'utente (non quello per sessione scaduta) fa uscire anche le altre schede, che ripuliscono i dati con `onLogout` e revocano il proprio token;
+- **login**: una scheda senza sessione, dopo un login in un'altra, riprende la sessione dallo storage o dal cookie SSO.
+
+Senza `BroadcastChannel` (browser molto vecchi, SSR) il client funziona come prima.
+
 ## Sessioni da un meccanismo diverso da OTP (es. magic link)
 
 Un progetto può avere, oltre al login OTP, un modo alternativo di ottenere una sessione già emessa da hub (es. lo scambio di un magic link via `/access-links/exchange`). `adoptSession` la adotta con lo stesso trattamento di un login OTP riuscito:
