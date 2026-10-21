@@ -3,7 +3,7 @@
  *
  * I default sono in italiano; ogni progetto può sovrascriverne una parte con
  * la prop `messages` (es. voicenote li prende da i18next). I segnaposto
- * {email}, {seconds} e {index} sono sostituiti da `format`; {link} di
+ * {email}, {seconds}, {index} e {days} sono sostituiti da `format`; {link} di
  * `privacyLabel` diventa il pulsante che apre l'informativa (testo `privacyLinkText`).
  */
 
@@ -34,6 +34,8 @@ export interface HubAuthMessages {
   linkSigning: string;
   linkUseCode: string;
   signupLink: string;
+  signupTrialLink: string;
+  signupTrialLinkOne: string;
   loginLink: string;
   registerTitle: string;
   usernameLabel: string;
@@ -88,6 +90,8 @@ export const defaultMessages: HubAuthMessages = {
   linkSigning: 'Accesso in corso...',
   linkUseCode: 'Usa il codice invece',
   signupLink: 'Non hai un account? Registrati',
+  signupTrialLink: 'Registrati e prova gratis per {days} giorni',
+  signupTrialLinkOne: 'Registrati e prova gratis per 1 giorno',
   loginLink: 'Hai già un account? Accedi',
   registerTitle: 'Crea il tuo account',
   usernameLabel: 'Nome utente',

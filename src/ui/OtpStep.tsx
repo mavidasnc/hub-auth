@@ -11,6 +11,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useHubAuth } from '../react/index.js';
 import { OtpInput } from './OtpInput.js';
 import { errorMessage, format, mergeMessages, type HubAuthMessages } from './messages.js';
+import { SignupCta } from './SignupCta.js';
 
 const CODE_LENGTH = 6;
 
@@ -46,7 +47,7 @@ function useCooldown(since: number | null, seconds: number): number {
 export function OtpStep({ messages: custom, resendCooldown = 60, signup = true }: OtpStepProps) {
   const messages = mergeMessages(custom);
   const {
-    verifyOtp, requestOtp, resetToEmail, startRegister, pendingEmail, otpRequestedAt, toolConfig, loading,
+    verifyOtp, requestOtp, resetToEmail, pendingEmail, otpRequestedAt, toolConfig, loading,
   } = useHubAuth();
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
@@ -133,13 +134,7 @@ export function OtpStep({ messages: custom, resendCooldown = 60, signup = true }
 
       {/* Otp-request risponde allo stesso modo per email sconosciute (anti-enumerazione):
           chi non riceve nulla trova qui la strada della registrazione */}
-      {signup && toolConfig?.signup_enabled && (
-        <div className="hub-auth__links hub-auth__links--center">
-          <button className="hub-auth__link" type="button" onClick={startRegister} disabled={loading}>
-            {messages.signupLink}
-          </button>
-        </div>
-      )}
+      {signup && toolConfig?.signup_enabled && <SignupCta messages={messages} />}
     </form>
   );
 }

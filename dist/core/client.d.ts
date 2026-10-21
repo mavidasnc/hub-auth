@@ -78,6 +78,9 @@ export type AuthStep = 'email' | 'otp' | 'link' | 'register' | 'registered';
  * - coupon_valid: esito del coupon del link di invito (hub >= 0.260.0; assente se
  *   la pagina non ha `?coupon=` o hub è più vecchio). Un coupon valido apre la
  *   registrazione anche quando è chiusa: `signup_enabled` è allora true
+ * - trial_days: giorni di prova da promettere nella CTA di registrazione (hub >=
+ *   0.261.0): quelli del coupon valido o delle impostazioni; assente se la
+ *   registrazione non è offerta, il trial non ha scadenza o hub è più vecchio
  */
 export interface ToolConfig {
     tool: {
@@ -93,6 +96,7 @@ export interface ToolConfig {
         format?: 'markdown' | 'text';
     } | null;
     coupon_valid?: boolean;
+    trial_days?: number;
 }
 /** Dati del form di registrazione */
 export interface RegisterData {

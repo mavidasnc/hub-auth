@@ -145,6 +145,8 @@ function toolConfigFromBody(body) {
         privacy,
         // Solo se hub ha controllato un coupon (hub >= 0.260.0 con ?coupon= nella richiesta)
         ...(typeof obj.coupon_valid === 'boolean' ? { coupon_valid: obj.coupon_valid } : {}),
+        // Solo un numero intero di giorni sensato: null o assente = nessuna promessa nella CTA
+        ...(Number.isInteger(obj.trial_days) && obj.trial_days > 0 ? { trial_days: obj.trial_days } : {}),
     };
 }
 /** Parametro della query che porta il coupon del link di invito (?coupon=CODICE) */

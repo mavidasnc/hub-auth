@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useHubAuth } from '../react/index.js';
 import { OtpInput } from './OtpInput.js';
 import { errorMessage, format, mergeMessages } from './messages.js';
+import { SignupCta } from './SignupCta.js';
 const CODE_LENGTH = 6;
 /** Secondi mancanti al reinvio, aggiornati ogni secondo */
 function useCooldown(since, seconds) {
@@ -34,7 +35,7 @@ function useCooldown(since, seconds) {
 }
 export function OtpStep({ messages: custom, resendCooldown = 60, signup = true }) {
     const messages = mergeMessages(custom);
-    const { verifyOtp, requestOtp, resetToEmail, startRegister, pendingEmail, otpRequestedAt, toolConfig, loading, } = useHubAuth();
+    const { verifyOtp, requestOtp, resetToEmail, pendingEmail, otpRequestedAt, toolConfig, loading, } = useHubAuth();
     const [code, setCode] = useState('');
     const [error, setError] = useState('');
     const [info, setInfo] = useState('');
@@ -87,5 +88,5 @@ export function OtpStep({ messages: custom, resendCooldown = 60, signup = true }
             setError(errorMessage(err, messages, 'email'));
         }
     };
-    return (_jsxs("form", { className: "hub-auth__form", onSubmit: handleSubmit, children: [_jsx("p", { className: "hub-auth__text", children: format(messages.codeSentTo, { email: pendingEmail }) }), _jsx(OtpInput, { value: code, onChange: handleChange, length: CODE_LENGTH, disabled: loading, autoFocus: true, digitLabel: (index) => format(messages.digitLabel, { index }) }), error && _jsx("p", { className: "hub-auth__error", role: "alert", children: error }), info && _jsx("p", { className: "hub-auth__info", role: "status", children: info }), _jsx("button", { className: "hub-auth__button", type: "submit", disabled: loading || code.length !== CODE_LENGTH, children: loading ? messages.verifying : messages.verify }), _jsxs("div", { className: "hub-auth__links", children: [_jsx("button", { className: "hub-auth__link", type: "button", onClick: resetToEmail, disabled: loading, children: messages.changeEmail }), _jsx("button", { className: "hub-auth__link", type: "button", onClick: handleResend, disabled: loading || remaining > 0, children: remaining > 0 ? format(messages.resendIn, { seconds: remaining }) : messages.resend })] }), signup && toolConfig?.signup_enabled && (_jsx("div", { className: "hub-auth__links hub-auth__links--center", children: _jsx("button", { className: "hub-auth__link", type: "button", onClick: startRegister, disabled: loading, children: messages.signupLink }) }))] }));
+    return (_jsxs("form", { className: "hub-auth__form", onSubmit: handleSubmit, children: [_jsx("p", { className: "hub-auth__text", children: format(messages.codeSentTo, { email: pendingEmail }) }), _jsx(OtpInput, { value: code, onChange: handleChange, length: CODE_LENGTH, disabled: loading, autoFocus: true, digitLabel: (index) => format(messages.digitLabel, { index }) }), error && _jsx("p", { className: "hub-auth__error", role: "alert", children: error }), info && _jsx("p", { className: "hub-auth__info", role: "status", children: info }), _jsx("button", { className: "hub-auth__button", type: "submit", disabled: loading || code.length !== CODE_LENGTH, children: loading ? messages.verifying : messages.verify }), _jsxs("div", { className: "hub-auth__links", children: [_jsx("button", { className: "hub-auth__link", type: "button", onClick: resetToEmail, disabled: loading, children: messages.changeEmail }), _jsx("button", { className: "hub-auth__link", type: "button", onClick: handleResend, disabled: loading || remaining > 0, children: remaining > 0 ? format(messages.resendIn, { seconds: remaining }) : messages.resend })] }), signup && toolConfig?.signup_enabled && _jsx(SignupCta, { messages: messages })] }));
 }

@@ -8,6 +8,7 @@
 import { useState, type FormEvent } from 'react';
 import { useHubAuth } from '../react/index.js';
 import { errorMessage, mergeMessages, type HubAuthMessages } from './messages.js';
+import { SignupCta } from './SignupCta.js';
 
 export interface EmailStepProps {
   messages?: Partial<HubAuthMessages>;
@@ -17,7 +18,7 @@ export interface EmailStepProps {
 
 export function EmailStep({ messages: custom, signup = true }: EmailStepProps) {
   const messages = mergeMessages(custom);
-  const { requestOtp, startRegister, toolConfig, loading } = useHubAuth();
+  const { requestOtp, toolConfig, loading } = useHubAuth();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
 
@@ -56,13 +57,7 @@ export function EmailStep({ messages: custom, signup = true }: EmailStepProps) {
 
       <p className="hub-auth__hint">{messages.codeHint}</p>
 
-      {signup && toolConfig?.signup_enabled && (
-        <div className="hub-auth__links hub-auth__links--center">
-          <button className="hub-auth__link" type="button" onClick={startRegister} disabled={loading}>
-            {messages.signupLink}
-          </button>
-        </div>
-      )}
+      {signup && toolConfig?.signup_enabled && <SignupCta messages={messages} />}
     </form>
   );
 }
