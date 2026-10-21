@@ -16,9 +16,13 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
  *
  * Dalla 1.8.0: `asideImage` (immagine nel pannello di default), `ecosystem` (blocco
  * "Le altre app Mavida" sotto la card) e landmark semantici (`<main>`, `<footer>`).
+ *
+ * Dalla 1.12.0: `asideLink` verso una pagina della stessa origine (es. '/about/') si
+ * apre in una modale (AboutDialog); l'indirizzo diretto resta una pagina intera.
  */
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useHubAuth } from '../react/index.js';
+import { AboutDialog } from './AboutDialog.js';
 import { EmailStep } from './EmailStep.js';
 import { LinkStep } from './LinkStep.js';
 import { OtpStep } from './OtpStep.js';
@@ -26,11 +30,40 @@ import { RegisteredStep } from './RegisteredStep.js';
 import { RegisterStep } from './RegisterStep.js';
 import { EcosystemNav } from './EcosystemMenu.js';
 import { mergeMessages } from './messages.js';
+/** true se l'indirizzo è un percorso della stessa origine (es. '/about/'), non un URL assoluto né '//host' */
+function isSameOriginPath(href) {
+    return href.startsWith('/') && !href.startsWith('//');
+}
 /** Pannello di default: logo dell'app, etichetta, descrizione e avviso del tool (da hub) */
-function DefaultAside({ logo, image, link }) {
+function DefaultAside({ logo, image, link, messages }) {
     const { toolConfig } = useHubAuth();
     const tool = toolConfig?.tool;
-    return (_jsxs(_Fragment, { children: [logo && _jsx("div", { className: "hub-auth__aside-logo", children: logo }), tool?.label && _jsx("h2", { className: "hub-auth__aside-title", children: tool.label }), tool?.description && _jsx("p", { className: "hub-auth__aside-text", children: tool.description }), tool?.login_notice && _jsx("p", { className: "hub-auth__aside-notice", role: "note", children: tool.login_notice }), image && (_jsx("img", { className: "hub-auth__aside-image", src: image.src, alt: image.alt, width: image.width, height: image.height, decoding: "async" })), link && (_jsxs("a", { className: "hub-auth__aside-cta", href: link.href, children: [link.label, _jsx("span", { className: "hub-auth__aside-cta-arrow", "aria-hidden": "true", children: "\u2192" })] }))] }));
+    const [aboutOpen, setAboutOpen] = useState(false);
+    // Il link che ha aperto la modale: alla chiusura il focus torna lì
+    const trigger = useRef(null);
+    const inModal = !!link && link.modal !== false && isSameOriginPath(link.href);
+    // Alla chiusura il focus torna al link. Va fatto dopo che la modale è uscita dal DOM: finché
+    // è aperta il resto della pagina è inerte e un focus() immediato non ha effetto
+    const wasOpen = useRef(false);
+    useEffect(() => {
+        if (aboutOpen)
+            wasOpen.current = true;
+        else if (wasOpen.current) {
+            wasOpen.current = false;
+            trigger.current?.focus();
+        }
+    }, [aboutOpen]);
+    /** Handler: il clic semplice apre la modale; le altre aperture (nuova scheda, tasto centrale) seguono il link */
+    const openAbout = (event) => {
+        if (!inModal || event.defaultPrevented || event.button !== 0
+            || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+            return;
+        event.preventDefault();
+        setAboutOpen(true);
+    };
+    return (_jsxs(_Fragment, { children: [logo && _jsx("div", { className: "hub-auth__aside-logo", children: logo }), tool?.label && _jsx("h2", { className: "hub-auth__aside-title", children: tool.label }), tool?.description && _jsx("p", { className: "hub-auth__aside-text", children: tool.description }), tool?.login_notice && _jsx("p", { className: "hub-auth__aside-notice", role: "note", children: tool.login_notice }), image && (_jsx("img", { className: "hub-auth__aside-image", src: image.src, alt: image.alt, width: image.width, height: image.height, decoding: "async" })), link && (_jsxs("a", { ref: trigger, className: "hub-auth__aside-cta", href: link.href, onClick: openAbout, children: [link.label, _jsx("span", { className: "hub-auth__aside-cta-arrow", "aria-hidden": "true", children: "\u2192" })] })), link && inModal && aboutOpen && (_jsx(AboutDialog, { href: link.href, title: link.label, messages: messages, onClose: () => setAboutOpen(false), 
+                // Pagina non caricabile (rete, 404): si va all'indirizzo diretto, come un link normale
+                onFail: () => window.location.assign(link.href) }))] }));
 }
 export function LoginScreen({ title, subtitle, logo, footer, messages: custom, resendCooldown, className = '', aside, layout = 'auto', signup = true, asideImage, asideLink, ecosystem = false, }) {
     const messages = mergeMessages(custom);
@@ -52,5 +85,5 @@ export function LoginScreen({ title, subtitle, logo, footer, messages: custom, r
     if (!split) {
         return (_jsxs("main", { className: `hub-auth ${className}`.trim(), children: [card, footerNode] }));
     }
-    return (_jsx("div", { className: `hub-auth hub-auth--split${logoInAside ? ' hub-auth--logo-aside' : ''} ${className}`.trim(), children: _jsxs("div", { className: "hub-auth__split", children: [_jsx("aside", { className: "hub-auth__aside", children: _jsx("div", { className: "hub-auth__aside-content", children: aside ?? _jsx(DefaultAside, { logo: logo, image: asideImage, link: asideLink }) }) }), _jsxs("main", { className: "hub-auth__main", children: [card, footerNode] })] }) }));
+    return (_jsx("div", { className: `hub-auth hub-auth--split${logoInAside ? ' hub-auth--logo-aside' : ''} ${className}`.trim(), children: _jsxs("div", { className: "hub-auth__split", children: [_jsx("aside", { className: "hub-auth__aside", children: _jsx("div", { className: "hub-auth__aside-content", children: aside ?? _jsx(DefaultAside, { logo: logo, image: asideImage, link: asideLink, messages: messages }) }) }), _jsxs("main", { className: "hub-auth__main", children: [card, footerNode] })] }) }));
 }

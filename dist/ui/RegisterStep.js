@@ -7,6 +7,9 @@ import { jsx as _jsx, Fragment as _Fragment, jsxs as _jsxs } from "react/jsx-run
  * modale (dalla 1.5.0) aperta dal link nella frase del consenso o dal pulsante
  * sotto la casella, suddiviso in paragrafi dalle righe vuote. La versione del
  * testo mostrato viaggia con la richiesta di registrazione (la gestisce il client).
+ *
+ * Dalla 1.12.0 un campo coupon facoltativo, chiuso dietro "Hai un coupon?" e già
+ * aperto e precompilato se la pagina è stata aperta con `?coupon=CODICE`.
  */
 import { useRef, useState } from 'react';
 import { HubAuthError } from '../core/index.js';
@@ -15,10 +18,13 @@ import { errorMessage, mergeMessages } from './messages.js';
 import { PrivacyDialog } from './PrivacyDialog.js';
 export function RegisterStep({ messages: custom }) {
     const messages = mergeMessages(custom);
-    const { register, resetToEmail, toolConfig, pendingEmail, loading } = useHubAuth();
+    const { register, resetToEmail, toolConfig, pendingEmail, loading, inviteCoupon } = useHubAuth();
     const [username, setUsername] = useState('');
     // Chi arriva dal passo del codice ha già scritto l'email: non va riscritta
     const [email, setEmail] = useState(pendingEmail);
+    // Coupon: il campo sta chiuso dietro "Hai un coupon?", salvo che il link di invito lo porti già
+    const [coupon, setCoupon] = useState(inviteCoupon ?? '');
+    const [couponOpen, setCouponOpen] = useState(Boolean(inviteCoupon));
     const [accepted, setAccepted] = useState(false);
     const [error, setError] = useState('');
     const [privacyOpen, setPrivacyOpen] = useState(false);
@@ -44,7 +50,7 @@ export function RegisterStep({ messages: custom }) {
         event.preventDefault();
         setError('');
         try {
-            await register({ username, email, privacyAccepted: accepted });
+            await register({ username, email, privacyAccepted: accepted, coupon });
         }
         catch (err) {
             setError(errorMessage(err, messages, 'register'));
@@ -53,5 +59,5 @@ export function RegisterStep({ messages: custom }) {
                 setAccepted(false);
         }
     };
-    return (_jsxs(_Fragment, { children: [_jsxs("form", { className: "hub-auth__form", onSubmit: handleSubmit, noValidate: true, children: [_jsx("h2", { className: "hub-auth__heading", children: messages.registerTitle }), _jsx("label", { className: "hub-auth__label", htmlFor: "hub-auth-username", children: messages.usernameLabel }), _jsx("input", { id: "hub-auth-username", className: "hub-auth__input", type: "text", autoComplete: "name", placeholder: messages.usernamePlaceholder, value: username, onChange: (e) => setUsername(e.target.value), disabled: loading, autoFocus: true, required: true }), _jsx("label", { className: "hub-auth__label", htmlFor: "hub-auth-register-email", children: messages.emailLabel }), _jsx("input", { id: "hub-auth-register-email", className: "hub-auth__input", type: "email", autoComplete: "email", placeholder: messages.emailPlaceholder, value: email, onChange: (e) => setEmail(e.target.value), disabled: loading, required: true }), _jsxs("label", { className: "hub-auth__check", children: [_jsx("input", { type: "checkbox", checked: accepted, onChange: (e) => setAccepted(e.target.checked), disabled: loading }), _jsx("span", { children: labelParts.length === 2 ? (_jsxs(_Fragment, { children: [labelParts[0], hasPrivacyText ? (_jsx("button", { className: "hub-auth__link hub-auth__link--inline", type: "button", onClick: openPrivacy, children: messages.privacyLinkText })) : messages.privacyLinkText, labelParts[1]] })) : messages.privacyLabel })] }), hasPrivacyText && (_jsx("button", { className: "hub-auth__link hub-auth__link--block", type: "button", onClick: openPrivacy, children: messages.privacyOpen })), error && _jsx("p", { className: "hub-auth__error", role: "alert", children: error }), _jsx("button", { className: "hub-auth__button", type: "submit", disabled: loading || !username.trim() || !email.trim() || !accepted, children: loading ? messages.registering : messages.register }), _jsx("div", { className: "hub-auth__links hub-auth__links--center", children: _jsx("button", { className: "hub-auth__link", type: "button", onClick: resetToEmail, disabled: loading, children: messages.loginLink }) })] }), privacyOpen && (_jsx(PrivacyDialog, { messages: messages, text: privacy?.text ?? '', format: privacy?.format, onClose: closePrivacy, onAccept: () => { setAccepted(true); closePrivacy(); } }))] }));
+    return (_jsxs(_Fragment, { children: [_jsxs("form", { className: "hub-auth__form", onSubmit: handleSubmit, noValidate: true, children: [_jsx("h2", { className: "hub-auth__heading", children: messages.registerTitle }), _jsx("label", { className: "hub-auth__label", htmlFor: "hub-auth-username", children: messages.usernameLabel }), _jsx("input", { id: "hub-auth-username", className: "hub-auth__input", type: "text", autoComplete: "name", placeholder: messages.usernamePlaceholder, value: username, onChange: (e) => setUsername(e.target.value), disabled: loading, autoFocus: true, required: true }), _jsx("label", { className: "hub-auth__label", htmlFor: "hub-auth-register-email", children: messages.emailLabel }), _jsx("input", { id: "hub-auth-register-email", className: "hub-auth__input", type: "email", autoComplete: "email", placeholder: messages.emailPlaceholder, value: email, onChange: (e) => setEmail(e.target.value), disabled: loading, required: true }), couponOpen ? (_jsxs(_Fragment, { children: [_jsx("label", { className: "hub-auth__label", htmlFor: "hub-auth-coupon", children: messages.couponLabel }), _jsx("input", { id: "hub-auth-coupon", className: "hub-auth__input", type: "text", autoComplete: "off", autoCapitalize: "characters", spellCheck: false, maxLength: 60, placeholder: messages.couponPlaceholder, value: coupon, onChange: (e) => setCoupon(e.target.value), disabled: loading })] })) : (_jsx("button", { className: "hub-auth__link hub-auth__link--block hub-auth__link--flush", type: "button", onClick: () => setCouponOpen(true), disabled: loading, children: messages.couponToggle })), _jsxs("label", { className: "hub-auth__check", children: [_jsx("input", { type: "checkbox", checked: accepted, onChange: (e) => setAccepted(e.target.checked), disabled: loading }), _jsx("span", { children: labelParts.length === 2 ? (_jsxs(_Fragment, { children: [labelParts[0], hasPrivacyText ? (_jsx("button", { className: "hub-auth__link hub-auth__link--inline", type: "button", onClick: openPrivacy, children: messages.privacyLinkText })) : messages.privacyLinkText, labelParts[1]] })) : messages.privacyLabel })] }), hasPrivacyText && (_jsx("button", { className: "hub-auth__link hub-auth__link--block", type: "button", onClick: openPrivacy, children: messages.privacyOpen })), error && _jsx("p", { className: "hub-auth__error", role: "alert", children: error }), _jsx("button", { className: "hub-auth__button", type: "submit", disabled: loading || !username.trim() || !email.trim() || !accepted, children: loading ? messages.registering : messages.register }), _jsx("div", { className: "hub-auth__links hub-auth__links--center", children: _jsx("button", { className: "hub-auth__link", type: "button", onClick: resetToEmail, disabled: loading, children: messages.loginLink }) })] }), privacyOpen && (_jsx(PrivacyDialog, { messages: messages, text: privacy?.text ?? '', format: privacy?.format, onClose: closePrivacy, onAccept: () => { setAccepted(true); closePrivacy(); } }))] }));
 }

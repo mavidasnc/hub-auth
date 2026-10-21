@@ -29,6 +29,12 @@
  * - registrazione (`startRegister` / `register`): nome utente, email e consenso
  *   privacy; l'esito dipende dalle impostazioni di hub: 'pending' (account da
  *   approvare, step 'registered') oppure 'active' (codice OTP già inviato, step 'otp')
+ *
+ * Dalla 1.12.0:
+ * - coupon di registrazione: campo `coupon` di `register()` e link di invito
+ *   (`?coupon=CODICE` nell'URL: `inviteCoupon`, verificato da hub con tool-config)
+ * - un 401 su una sessione salvata, con `sso`, tenta una volta lo scambio del
+ *   cookie SSO prima di mandare l'utente al login
  */
 import { errorFromBody, HubAuthError, networkError } from './errors.js';
 import { localStorageAdapter } from './storage.js';
@@ -133,7 +139,29 @@ function toolConfigFromBody(body) {
             ...(obj.privacy.format === 'markdown' ? { format: 'markdown' } : {}),
         }
         : null;
-    return { tool, signup_enabled: obj.signup_enabled, privacy };
+    return {
+        tool,
+        signup_enabled: obj.signup_enabled,
+        privacy,
+        // Solo se hub ha controllato un coupon (hub >= 0.260.0 con ?coupon= nella richiesta)
+        ...(typeof obj.coupon_valid === 'boolean' ? { coupon_valid: obj.coupon_valid } : {}),
+    };
+}
+/** Parametro della query che porta il coupon del link di invito (?coupon=CODICE) */
+const COUPON_PARAM = 'coupon';
+/** Forma ammessa del coupon letto dall'URL (hub lo normalizza e decide se è valido) */
+const COUPON_RE = /^[A-Za-z0-9_-]{1,60}$/;
+/**
+ * Legge il coupon del link di invito dalla query dell'URL. Non lo rimuove: non è
+ * un segreto e così un ricaricamento della pagina lo ritrova.
+ *
+ * @returns il coupon se presente e ben formato, altrimenti null
+ */
+function readCouponFromUrl() {
+    if (typeof window === 'undefined' || !window.location?.search)
+        return null;
+    const value = new URLSearchParams(window.location.search).get(COUPON_PARAM)?.trim() ?? '';
+    return COUPON_RE.test(value) ? value : null;
 }
 /** Parametro del fragment che porta il token del magic link (#hub_otp=...) */
 const LINK_PARAM = 'hub_otp';
@@ -184,6 +212,7 @@ export function createHubAuth(config) {
         notice: null,
         step: 'email',
         toolConfig: null,
+        inviteCoupon: readCouponFromUrl(),
         pendingEmail: '',
         otpRequestedAt: null,
         loading: false,
@@ -403,7 +432,34 @@ export function createHubAuth(config) {
             return;
         if (usedToken && usedToken !== state.token)
             return;
-        forceLogout('session_expired');
+        void expireSession(state.token);
+    }
+    /** Ultimo recupero via SSO riuscito (ms): se la sessione appena ottenuta riceve ancora 401 non si ripete (niente cicli) */
+    let lastSsoRecoveryAt = 0;
+    /** Recupero in corso: più 401 in parallelo (richieste simultanee) ne avviano uno solo */
+    let ssoRecovery = null;
+    const SSO_RECOVERY_COOLDOWN_MS = 10000;
+    /**
+     * La sessione di questa app ha ricevuto 401 (token revocato o scaduto, logout globale
+     * da un'altra app, cambio di browser...). Con SSO il cookie può essere ancora valido, per
+     * esempio perché l'utente ha fatto un nuovo accesso in un'altra app: prima di mandarlo al
+     * login lo si prova una volta (stesso scambio del boot senza sessione). Se il cookie non
+     * c'è o non vale, logout come prima, con l'avviso `session_expired`.
+     *
+     * @param token - il token che ha ricevuto il 401
+     */
+    async function expireSession(token) {
+        if (!config.sso || Date.now() - lastSsoRecoveryAt < SSO_RECOVERY_COOLDOWN_MS) {
+            forceLogout('session_expired');
+            return;
+        }
+        ssoRecovery ?? (ssoRecovery = (async () => {
+            const recovered = await trySso(true, token);
+            // Nel frattempo logout o nuovo login: non c'è più nulla da chiudere
+            if (!recovered && state.token === token)
+                forceLogout('session_expired');
+        })().finally(() => { ssoRecovery = null; }));
+        await ssoRecovery;
     }
     /** Al ritorno della rete riprova la verifica della sessione (un solo listener) */
     function retryWhenOnline() {
@@ -442,7 +498,7 @@ export function createHubAuth(config) {
             return;
         }
         if (res.status === 401) {
-            forceLogout('session_expired');
+            await expireSession(token);
             return;
         }
         const error = errorFromBody(res.status, body);
@@ -546,15 +602,35 @@ export function createHubAuth(config) {
     // ── Configurazione pubblica e registrazione ────────────────────────────────
     /** Richiesta in corso di GET /auth/tool-config: evita chiamate doppie */
     let toolConfigRequest = null;
+    /** Il coupon del link di invito è già stato valutato (la prima volta soltanto: il form non va riaperto a ogni ricarica) */
+    let inviteHandled = false;
     async function fetchToolConfig() {
         try {
-            const query = config.tool ? `?tool=${encodeURIComponent(config.tool)}` : '';
+            // Il coupon del link di invito viaggia con la richiesta: hub dice se è valido e,
+            // se lo è, offre la registrazione anche quando è chiusa
+            const params = new URLSearchParams();
+            if (config.tool)
+                params.set('tool', config.tool);
+            if (state.inviteCoupon)
+                params.set(COUPON_PARAM, state.inviteCoupon);
+            const query = params.toString() ? `?${params.toString()}` : '';
             const res = await doFetch(url(`auth/tool-config${query}`));
             if (!res.ok)
                 return;
             const parsed = toolConfigFromBody(await res.json().catch(() => null));
-            if (parsed)
-                set({ toolConfig: parsed });
+            if (!parsed)
+                return;
+            set({ toolConfig: parsed });
+            if (inviteHandled || state.inviteCoupon === null || parsed.coupon_valid === undefined)
+                return;
+            inviteHandled = true;
+            if (state.status !== 'anonymous' || state.step !== 'email')
+                return;
+            // Coupon valido: il link è un invito, si apre subito la registrazione. Non valido: lo si dice
+            if (parsed.coupon_valid && parsed.signup_enabled)
+                set({ step: 'register', notice: null });
+            else if (!parsed.coupon_valid)
+                set({ notice: 'coupon_invalid' });
         }
         catch {
             // hub non raggiungibile o non aggiornato: login senza pannello né registrazione
@@ -597,6 +673,9 @@ export function createHubAuth(config) {
             };
             if (config.tool)
                 body.tool = config.tool;
+            const coupon = data.coupon?.trim();
+            if (coupon)
+                body.coupon = coupon;
             const result = await publicPost('signup', body);
             if (result?.status === 'active') {
                 // Account attivo subito: hub ha già inviato il codice, si prosegue come un login
@@ -626,9 +705,12 @@ export function createHubAuth(config) {
      * @param silent - true: non tocca stato né avvisi se non riesce (usato mentre
      *   si attende il codice OTP); false: all'avvio, dove il fallimento porta al
      *   login (con l'avviso se l'utente è in SSO ma non può usare questo tool)
+     * @param replacing - token di una sessione appena rifiutata (401) che lo scambio
+     *   può sostituire: senza, una sessione già aperta fa scartare la risposta. Se
+     *   l'utente del cookie è un altro, `onLogout` pulisce i dati del precedente
      * @returns true se è stata aperta una sessione
      */
-    async function trySso(silent = false) {
+    async function trySso(silent = false, replacing) {
         let res;
         try {
             res = await doFetch(url('sso/session'), {
@@ -646,10 +728,23 @@ export function createHubAuth(config) {
         }
         const data = (await res.json().catch(() => null));
         // Un login (OTP, link o altro) è avvenuto nel frattempo: la risposta non serve più
-        if (state.token)
+        if (state.token && state.token !== replacing)
             return false;
         if (res.ok && data?.session_token && data.user_id) {
+            const previousUserId = replacing ? state.user?.user_id ?? null : null;
+            // Prima di /me: se anche la sessione nuova ricevesse 401 non si riprova subito (niente cicli)
+            if (replacing)
+                lastSsoRecoveryAt = Date.now();
             openSession(data.session_token, partialUser(data.user_id, data.email ?? null));
+            if (previousUserId && previousUserId !== data.user_id) {
+                // Il cookie appartiene a un altro utente: i dati locali del precedente vanno puliti
+                try {
+                    config.onLogout?.({ userId: previousUserId, notice: null });
+                }
+                catch (err) {
+                    console.error('[hub-auth] onLogout ha lanciato un errore:', err);
+                }
+            }
             await refresh();
             return true;
         }

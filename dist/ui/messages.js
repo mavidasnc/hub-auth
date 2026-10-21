@@ -47,6 +47,12 @@ export const defaultMessages = {
     privacyRequired: "Per registrarti devi accettare l'informativa sulla privacy.",
     signupDisabled: 'La registrazione non è al momento disponibile.',
     privacyChanged: "L'informativa sulla privacy è stata aggiornata: rileggila e riprova.",
+    couponToggle: 'Hai un coupon?',
+    couponLabel: 'Coupon',
+    couponPlaceholder: 'Codice coupon',
+    invalidCoupon: 'Coupon non valido',
+    aboutLoading: 'Caricamento...',
+    aboutClose: 'Chiudi',
     registeredTitle: 'Registrazione ricevuta',
     registeredText: 'Grazie! Abbiamo registrato la tua richiesta per {email}. Riceverai una email appena il tuo account sarà attivato.',
     backToLogin: "Torna all'accesso",
@@ -57,6 +63,7 @@ export const defaultMessages = {
         tool_not_enabled: 'Questo strumento non è abilitato per il tuo account.',
         trial_expired: 'Il periodo di prova è terminato.',
         link_invalid: 'Il link di accesso non è valido, è scaduto o è già stato usato. Richiedi un nuovo codice.',
+        coupon_invalid: 'Coupon non valido',
     },
 };
 /** Unisce i testi del progetto ai default (anche per le notice) */
@@ -91,6 +98,7 @@ export function errorMessage(err, messages, step) {
         case 'PrivacyNotAccepted': return messages.privacyRequired;
         case 'SignupDisabled': return messages.signupDisabled;
         case 'PrivacyVersionMismatch': return messages.privacyChanged;
+        case 'InvalidCoupon': return messages.invalidCoupon;
     }
     if (step === 'otp' && err.status === 401)
         return messages.invalidCode;

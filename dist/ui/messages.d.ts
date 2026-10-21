@@ -47,6 +47,12 @@ export interface HubAuthMessages {
     privacyRequired: string;
     signupDisabled: string;
     privacyChanged: string;
+    couponToggle: string;
+    couponLabel: string;
+    couponPlaceholder: string;
+    invalidCoupon: string;
+    aboutLoading: string;
+    aboutClose: string;
     registeredTitle: string;
     registeredText: string;
     backToLogin: string;

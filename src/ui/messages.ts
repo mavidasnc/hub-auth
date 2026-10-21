@@ -50,6 +50,12 @@ export interface HubAuthMessages {
   privacyRequired: string;
   signupDisabled: string;
   privacyChanged: string;
+  couponToggle: string;
+  couponLabel: string;
+  couponPlaceholder: string;
+  invalidCoupon: string;
+  aboutLoading: string;
+  aboutClose: string;
   registeredTitle: string;
   registeredText: string;
   backToLogin: string;
@@ -98,6 +104,12 @@ export const defaultMessages: HubAuthMessages = {
   privacyRequired: "Per registrarti devi accettare l'informativa sulla privacy.",
   signupDisabled: 'La registrazione non è al momento disponibile.',
   privacyChanged: "L'informativa sulla privacy è stata aggiornata: rileggila e riprova.",
+  couponToggle: 'Hai un coupon?',
+  couponLabel: 'Coupon',
+  couponPlaceholder: 'Codice coupon',
+  invalidCoupon: 'Coupon non valido',
+  aboutLoading: 'Caricamento...',
+  aboutClose: 'Chiudi',
   registeredTitle: 'Registrazione ricevuta',
   registeredText: 'Grazie! Abbiamo registrato la tua richiesta per {email}. Riceverai una email appena il tuo account sarà attivato.',
   backToLogin: "Torna all'accesso",
@@ -108,6 +120,7 @@ export const defaultMessages: HubAuthMessages = {
     tool_not_enabled: 'Questo strumento non è abilitato per il tuo account.',
     trial_expired: 'Il periodo di prova è terminato.',
     link_invalid: 'Il link di accesso non è valido, è scaduto o è già stato usato. Richiedi un nuovo codice.',
+    coupon_invalid: 'Coupon non valido',
   },
 };
 
@@ -145,6 +158,7 @@ export function errorMessage(err: unknown, messages: HubAuthMessages, step: 'ema
     case 'PrivacyNotAccepted': return messages.privacyRequired;
     case 'SignupDisabled': return messages.signupDisabled;
     case 'PrivacyVersionMismatch': return messages.privacyChanged;
+    case 'InvalidCoupon': return messages.invalidCoupon;
   }
   if (step === 'otp' && err.status === 401) return messages.invalidCode;
   // 429 e 5xx: hub restituisce un messaggio leggibile (es. "Troppi tentativi...")

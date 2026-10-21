@@ -6,6 +6,9 @@
  * modale (dalla 1.5.0) aperta dal link nella frase del consenso o dal pulsante
  * sotto la casella, suddiviso in paragrafi dalle righe vuote. La versione del
  * testo mostrato viaggia con la richiesta di registrazione (la gestisce il client).
+ *
+ * Dalla 1.12.0 un campo coupon facoltativo, chiuso dietro "Hai un coupon?" e già
+ * aperto e precompilato se la pagina è stata aperta con `?coupon=CODICE`.
  */
 
 import { useRef, useState, type FormEvent, type MouseEvent } from 'react';
@@ -20,10 +23,13 @@ export interface RegisterStepProps {
 
 export function RegisterStep({ messages: custom }: RegisterStepProps) {
   const messages = mergeMessages(custom);
-  const { register, resetToEmail, toolConfig, pendingEmail, loading } = useHubAuth();
+  const { register, resetToEmail, toolConfig, pendingEmail, loading, inviteCoupon } = useHubAuth();
   const [username, setUsername] = useState('');
   // Chi arriva dal passo del codice ha già scritto l'email: non va riscritta
   const [email, setEmail] = useState(pendingEmail);
+  // Coupon: il campo sta chiuso dietro "Hai un coupon?", salvo che il link di invito lo porti già
+  const [coupon, setCoupon] = useState(inviteCoupon ?? '');
+  const [couponOpen, setCouponOpen] = useState(Boolean(inviteCoupon));
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState('');
   const [privacyOpen, setPrivacyOpen] = useState(false);
@@ -54,7 +60,7 @@ export function RegisterStep({ messages: custom }: RegisterStepProps) {
     event.preventDefault();
     setError('');
     try {
-      await register({ username, email, privacyAccepted: accepted });
+      await register({ username, email, privacyAccepted: accepted, coupon });
     } catch (err) {
       setError(errorMessage(err, messages, 'register'));
       // Con l'informativa aggiornata la spunta data sul testo vecchio non vale più
@@ -93,6 +99,34 @@ export function RegisterStep({ messages: custom }: RegisterStepProps) {
         disabled={loading}
         required
       />
+
+      {couponOpen ? (
+        <>
+          <label className="hub-auth__label" htmlFor="hub-auth-coupon">{messages.couponLabel}</label>
+          <input
+            id="hub-auth-coupon"
+            className="hub-auth__input"
+            type="text"
+            autoComplete="off"
+            autoCapitalize="characters"
+            spellCheck={false}
+            maxLength={60}
+            placeholder={messages.couponPlaceholder}
+            value={coupon}
+            onChange={(e) => setCoupon(e.target.value)}
+            disabled={loading}
+          />
+        </>
+      ) : (
+        <button
+          className="hub-auth__link hub-auth__link--block hub-auth__link--flush"
+          type="button"
+          onClick={() => setCouponOpen(true)}
+          disabled={loading}
+        >
+          {messages.couponToggle}
+        </button>
+      )}
 
       <label className="hub-auth__check">
         <input
