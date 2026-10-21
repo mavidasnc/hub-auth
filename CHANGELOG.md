@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.13.0 — 2026-10-21
+
+CTA di registrazione in evidenza con i giorni di prova e modale "Approfondisci" più larga. Nessuna modifica che rompa l'API pubblica. **I giorni di prova richiedono hub ≥ 0.261.0 (`trial_days` in `GET /auth/tool-config`): rilasciare prima hub e poi le app**; con un hub più vecchio la CTA resta senza giorni.
+
+- **CTA "Registrati" in evidenza** (`SignupCta`, usata dal passo dell'email e da quello del codice): pulsante con la tinta del primario del tema al posto del link di testo, separato dal form da una riga. Se hub invia `trial_days` (`ToolConfig.trial_days`: i giorni delle impostazioni o del coupon valido) il testo li promette ("Registrati e prova gratis per 14 giorni", singolare per 1); senza (trial senza scadenza, valore non valido, hub più vecchio) resta `signupLink`. Nuovi testi `signupTrialLink` (con `{days}`) e `signupTrialLinkOne`; nuove classi `.hub-auth__signup` e `.hub-auth__button--cta`.
+- **Modale "Approfondisci" all'80%**: `.hub-auth__dialog--wide` ha `width: 80%` e `max-width: var(--hub-auth-split-max-width)` (era fissa a 760px), quindi segue la larghezza massima del layout a due metà e si regola con la stessa variabile.
+- Test: 221 → 230 (CTA con i giorni, singolare, passo del codice, valori non validi, testi sovrascritti).
+
 ## 1.12.0 — 2026-10-21
 
 Coupon di registrazione, recupero della sessione via SSO e modale "Approfondisci". Nessuna modifica che rompa l'API pubblica. **I coupon richiedono hub ≥ 0.260.0 (migration 168): rilasciare prima hub e poi le app**; con un hub più vecchio il campo `coupon` viene ignorato in silenzio.

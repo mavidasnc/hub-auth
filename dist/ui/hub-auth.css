@@ -531,9 +531,31 @@
   padding-left: 0;
 }
 
-/* Modale "Approfondisci" con la pagina about dell'app (dalla 1.12.0) */
+/* CTA di registrazione sotto il form di accesso (dalla 1.13.0): pulsante in evidenza,
+ * separato dal resto da una riga, con i colori del tema (tinta del primario) */
+.hub-auth__signup {
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hub-auth-card-border);
+}
+
+.hub-auth__button--cta {
+  border: 1px solid var(--hub-auth-primary);
+  background: color-mix(in srgb, var(--hub-auth-primary) 10%, var(--hub-auth-card-bg));
+  color: var(--hub-auth-primary);
+  font-weight: 700;
+}
+
+.hub-auth__button--cta:hover:not(:disabled) {
+  background: var(--hub-auth-primary);
+  color: var(--hub-auth-primary-text);
+}
+
+/* Modale "Approfondisci" con la pagina about dell'app (dalla 1.12.0): dalla 1.13.0 larga
+ * l'80% della finestra, fino alla larghezza massima del layout a due metà */
 .hub-auth__dialog--wide {
-  max-width: 760px;
+  width: 80%;
+  max-width: var(--hub-auth-split-max-width);
 }
 
 .hub-auth__about {

@@ -294,6 +294,54 @@ describe('UI: registrazione', () => {
     expect(screen.queryByText('Non hai un account? Registrati')).toBeNull();
   });
 
+  describe('CTA con i giorni di prova (1.13.0)', () => {
+    it('promette i giorni di prova indicati da hub e porta al form', async () => {
+      monta({ config: () => json(200, { ...CONFIG_APERTA, trial_days: 14 }) });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Registrati e prova gratis per 14 giorni' }));
+
+      expect(await screen.findByLabelText('Nome utente')).toBeTruthy();
+    });
+
+    it('un solo giorno: singolare', async () => {
+      monta({ config: () => json(200, { ...CONFIG_APERTA, trial_days: 1 }) });
+
+      expect(await screen.findByRole('button', { name: 'Registrati e prova gratis per 1 giorno' })).toBeTruthy();
+    });
+
+    it('è anche nel passo del codice', async () => {
+      const { client } = monta({ config: () => json(200, { ...CONFIG_APERTA, trial_days: 7 }) });
+      await screen.findByRole('button', { name: 'Registrati e prova gratis per 7 giorni' });
+
+      fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'mario@esempio.com' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Invia codice' }));
+
+      await waitFor(() => expect(client.getState().step).toBe('otp'));
+      expect(screen.getByRole('button', { name: 'Registrati e prova gratis per 7 giorni' })).toBeTruthy();
+    });
+
+    it.each([
+      ['null (trial senza scadenza)', null],
+      ['zero', 0],
+      ['negativo', -3],
+      ['non intero', 7.5],
+      ['stringa', '7'],
+    ])('%s: nessuna promessa, resta il testo di sempre', async (_nome, trial_days) => {
+      monta({ config: () => json(200, { ...CONFIG_APERTA, trial_days }) });
+
+      expect(await screen.findByRole('button', { name: 'Non hai un account? Registrati' })).toBeTruthy();
+    });
+
+    it('i testi si possono sovrascrivere', async () => {
+      monta(
+        { config: () => json(200, { ...CONFIG_APERTA, trial_days: 30 }) },
+        { messages: { signupTrialLink: 'Try free for {days} days' } },
+      );
+
+      expect(await screen.findByRole('button', { name: 'Try free for 30 days' })).toBeTruthy();
+    });
+  });
+
   it('il link apre il form: il testo della privacy non è sotto il form ma nella modale', async () => {
     monta({ config: () => json(200, CONFIG_APERTA) });
 
