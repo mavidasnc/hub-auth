@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.0 — 2026-10-21
+
+Coupon di registrazione, recupero della sessione via SSO e modale "Approfondisci". Nessuna modifica che rompa l'API pubblica. **I coupon richiedono hub ≥ 0.260.0 (migration 168): rilasciare prima hub e poi le app**; con un hub più vecchio il campo `coupon` viene ignorato in silenzio.
+
+- **Coupon di registrazione**: `RegisterData.coupon` e campo "Coupon" nel form (`RegisterStep`), chiuso dietro "Hai un coupon?". Un coupon non valido fa lanciare `InvalidCoupon` ("Coupon non valido") e ferma la registrazione.
+- **Link di invito `?coupon=CODICE`**: il client legge il codice dall'URL (`AuthState.inviteCoupon`, non viene rimosso dall'URL) e lo passa a `GET /auth/tool-config?coupon=`. Se hub lo trova valido (`ToolConfig.coupon_valid`) il login si apre sul form di registrazione, già compilato, anche con la registrazione chiusa; se non lo è compare la notice `coupon_invalid`. Nuovi testi `couponToggle`, `couponLabel`, `couponPlaceholder`, `invalidCoupon`, `notice.coupon_invalid`.
+- **Recupero della sessione via SSO su un 401** (con `sso: true`): una sessione salvata rifiutata da `/me` (o da una richiesta dell'app) prova una volta lo scambio del cookie prima del logout. Prima l'utente vedeva "sessione scaduta" anche con un cookie valido, per esempio dopo un nuovo accesso in un'altra app. Un solo tentativo per volta, pausa di 10 secondi dopo un recupero riuscito (niente cicli), `onLogout` per il vecchio utente se il cookie è di un altro. Il test "con una sessione salvata non tenta l'SSO" resta valido: lo scambio parte solo dopo un 401.
+- **Modale "Approfondisci"**: `asideLink` verso un percorso della stessa origine apre la pagina in una modale (`AboutDialog`, interna): `fetch` + `<main>` + DOMPurify, indirizzi relativi risolti, link in nuova scheda, caricamento una sola volta; ripiego sull'indirizzo diretto se il caricamento fallisce. Clic con modificatori e tasto centrale seguono il link; `modal: false` la disattiva. `/about/` aperto direttamente non cambia.
+- Test: 169 → 221 (coupon nel client e nel form, link di invito, recupero SSO, modale).
+
 ## 1.11.0 — 2026-10-13
 
 Fase 5 della review del 2026-10-11 (M-6, B-3, B-22). Nessuna modifica all'API pubblica e nessun requisito nuovo su hub; **modifica di comportamento**: il Bearer non viene più allegato alle richieste verso altre origini.

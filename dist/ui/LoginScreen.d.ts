@@ -15,6 +15,9 @@
  *
  * Dalla 1.8.0: `asideImage` (immagine nel pannello di default), `ecosystem` (blocco
  * "Le altre app Mavida" sotto la card) e landmark semantici (`<main>`, `<footer>`).
+ *
+ * Dalla 1.12.0: `asideLink` verso una pagina della stessa origine (es. '/about/') si
+ * apre in una modale (AboutDialog); l'indirizzo diretto resta una pagina intera.
  */
 import { type ReactNode } from 'react';
 import { type HubAuthMessages } from './messages.js';
@@ -34,6 +37,13 @@ export interface AsideLink {
     href: string;
     /** Testo del pulsante (es. 'Approfondisci') */
     label: string;
+    /**
+     * Dalla 1.12.0 un `href` sulla stessa origine (es. '/about/') si apre in una modale, senza
+     * lasciare il login; l'indirizzo diretto resta una pagina intera. `false` lo disattiva e il
+     * pulsante è sempre un link normale. Ctrl/Cmd/Maiusc/Alt + clic e il tasto centrale
+     * aprono comunque la pagina a sé.
+     */
+    modal?: boolean;
 }
 export interface LoginScreenProps {
     /** Titolo della card (es. nome dell'app) */

@@ -29,6 +29,12 @@
  * - registrazione (`startRegister` / `register`): nome utente, email e consenso
  *   privacy; l'esito dipende dalle impostazioni di hub: 'pending' (account da
  *   approvare, step 'registered') oppure 'active' (codice OTP già inviato, step 'otp')
+ *
+ * Dalla 1.12.0:
+ * - coupon di registrazione: campo `coupon` di `register()` e link di invito
+ *   (`?coupon=CODICE` nell'URL: `inviteCoupon`, verificato da hub con tool-config)
+ * - un 401 su una sessione salvata, con `sso`, tenta una volta lo scambio del
+ *   cookie SSO prima di mandare l'utente al login
  */
 import { type StorageAdapter } from './storage.js';
 /**
@@ -44,8 +50,9 @@ export type AuthStatus = 'checking' | 'anonymous' | 'authenticated';
  * - tool_not_enabled: 403 ToolNotEnabled (tool non abilitato per l'account)
  * - trial_expired: 403 TrialExpired (scadenza dell'account superata)
  * - link_invalid: il magic link dell'email è sconosciuto, scaduto o già usato
+ * - coupon_invalid: il coupon del link di invito (?coupon=) non è valido
  */
-export type AuthNotice = 'session_expired' | 'tool_not_enabled' | 'trial_expired' | 'link_invalid';
+export type AuthNotice = 'session_expired' | 'tool_not_enabled' | 'trial_expired' | 'link_invalid' | 'coupon_invalid';
 /** Utente della sessione, come restituito da GET /me */
 export interface HubUser {
     user_id: string;
@@ -68,6 +75,9 @@ export type AuthStep = 'email' | 'otp' | 'link' | 'register' | 'registered';
  * - signup_enabled: hub offre la registrazione per questo tool
  * - privacy: testo, versione e formato ('markdown' | 'text') dell'informativa
  *   (solo se la registrazione è offerta)
+ * - coupon_valid: esito del coupon del link di invito (hub >= 0.260.0; assente se
+ *   la pagina non ha `?coupon=` o hub è più vecchio). Un coupon valido apre la
+ *   registrazione anche quando è chiusa: `signup_enabled` è allora true
  */
 export interface ToolConfig {
     tool: {
@@ -82,6 +92,7 @@ export interface ToolConfig {
         version: string;
         format?: 'markdown' | 'text';
     } | null;
+    coupon_valid?: boolean;
 }
 /** Dati del form di registrazione */
 export interface RegisterData {
@@ -89,6 +100,12 @@ export interface RegisterData {
     email: string;
     /** Consenso all'informativa privacy: deve essere true */
     privacyAccepted: boolean;
+    /**
+     * Coupon di registrazione (opzionale, hub >= 0.260.0): sovrascrive trial, piano e
+     * approvazione e può aprire una registrazione chiusa. Un codice non valido,
+     * scaduto o esaurito fa lanciare `InvalidCoupon` e ferma la registrazione.
+     */
+    coupon?: string;
 }
 /** Stato completo osservabile del client */
 export interface AuthState {
@@ -104,6 +121,12 @@ export interface AuthState {
     step: AuthStep;
     /** Configurazione pubblica del login, null finché non caricata (o se hub non risponde) */
     toolConfig: ToolConfig | null;
+    /**
+     * Coupon del link di invito (`?coupon=CODICE` nell'URL della pagina), null se assente:
+     * precompila il campo del form di registrazione e, se hub lo trova valido, porta
+     * direttamente alla registrazione anche quando è chiusa
+     */
+    inviteCoupon: string | null;
     /** Email a cui è stato chiesto il codice (step 'otp') */
     pendingEmail: string;
     /** Timestamp (ms) dell'ultima richiesta di codice riuscita, per il cooldown del reinvio */

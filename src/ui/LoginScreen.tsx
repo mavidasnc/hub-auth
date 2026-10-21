@@ -15,10 +15,14 @@
  *
  * Dalla 1.8.0: `asideImage` (immagine nel pannello di default), `ecosystem` (blocco
  * "Le altre app Mavida" sotto la card) e landmark semantici (`<main>`, `<footer>`).
+ *
+ * Dalla 1.12.0: `asideLink` verso una pagina della stessa origine (es. '/about/') si
+ * apre in una modale (AboutDialog); l'indirizzo diretto resta una pagina intera.
  */
 
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { useHubAuth } from '../react/index.js';
+import { AboutDialog } from './AboutDialog.js';
 import { EmailStep } from './EmailStep.js';
 import { LinkStep } from './LinkStep.js';
 import { OtpStep } from './OtpStep.js';
@@ -44,6 +48,13 @@ export interface AsideLink {
   href: string;
   /** Testo del pulsante (es. 'Approfondisci') */
   label: string;
+  /**
+   * Dalla 1.12.0 un `href` sulla stessa origine (es. '/about/') si apre in una modale, senza
+   * lasciare il login; l'indirizzo diretto resta una pagina intera. `false` lo disattiva e il
+   * pulsante è sempre un link normale. Ctrl/Cmd/Maiusc/Alt + clic e il tasto centrale
+   * aprono comunque la pagina a sé.
+   */
+  modal?: boolean;
 }
 
 export interface LoginScreenProps {
@@ -91,10 +102,41 @@ export interface LoginScreenProps {
   ecosystem?: boolean;
 }
 
+/** true se l'indirizzo è un percorso della stessa origine (es. '/about/'), non un URL assoluto né '//host' */
+function isSameOriginPath(href: string): boolean {
+  return href.startsWith('/') && !href.startsWith('//');
+}
+
 /** Pannello di default: logo dell'app, etichetta, descrizione e avviso del tool (da hub) */
-function DefaultAside({ logo, image, link }: { logo?: ReactNode; image?: AsideImage; link?: AsideLink }) {
+function DefaultAside({ logo, image, link, messages }: {
+  logo?: ReactNode; image?: AsideImage; link?: AsideLink; messages: HubAuthMessages;
+}) {
   const { toolConfig } = useHubAuth();
   const tool = toolConfig?.tool;
+  const [aboutOpen, setAboutOpen] = useState(false);
+  // Il link che ha aperto la modale: alla chiusura il focus torna lì
+  const trigger = useRef<HTMLAnchorElement>(null);
+  const inModal = !!link && link.modal !== false && isSameOriginPath(link.href);
+
+  // Alla chiusura il focus torna al link. Va fatto dopo che la modale è uscita dal DOM: finché
+  // è aperta il resto della pagina è inerte e un focus() immediato non ha effetto
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (aboutOpen) wasOpen.current = true;
+    else if (wasOpen.current) {
+      wasOpen.current = false;
+      trigger.current?.focus();
+    }
+  }, [aboutOpen]);
+
+  /** Handler: il clic semplice apre la modale; le altre aperture (nuova scheda, tasto centrale) seguono il link */
+  const openAbout = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (!inModal || event.defaultPrevented || event.button !== 0
+      || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    setAboutOpen(true);
+  };
+
   return (
     <>
       {logo && <div className="hub-auth__aside-logo">{logo}</div>}
@@ -112,10 +154,20 @@ function DefaultAside({ logo, image, link }: { logo?: ReactNode; image?: AsideIm
         />
       )}
       {link && (
-        <a className="hub-auth__aside-cta" href={link.href}>
+        <a ref={trigger} className="hub-auth__aside-cta" href={link.href} onClick={openAbout}>
           {link.label}
           <span className="hub-auth__aside-cta-arrow" aria-hidden="true">→</span>
         </a>
+      )}
+      {link && inModal && aboutOpen && (
+        <AboutDialog
+          href={link.href}
+          title={link.label}
+          messages={messages}
+          onClose={() => setAboutOpen(false)}
+          // Pagina non caricabile (rete, 404): si va all'indirizzo diretto, come un link normale
+          onFail={() => window.location.assign(link.href)}
+        />
       )}
     </>
   );
@@ -184,7 +236,7 @@ export function LoginScreen({
       <div className="hub-auth__split">
         <aside className="hub-auth__aside">
           <div className="hub-auth__aside-content">
-            {aside ?? <DefaultAside logo={logo} image={asideImage} link={asideLink} />}
+            {aside ?? <DefaultAside logo={logo} image={asideImage} link={asideLink} messages={messages} />}
           </div>
         </aside>
         <main className="hub-auth__main">
