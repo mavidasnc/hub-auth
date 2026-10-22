@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.14.0 — 2026-10-22
+
+Pagamento dell'abbonamento con PayPal dentro il login. Nessuna modifica che rompa l'API pubblica: con hub che non ha i pagamenti accesi (default) nulla cambia. **Richiede hub ≥ 0.267.0 (migration 171)**: rilasciare prima hub, poi le app. Le app ricevono il nuovo step aggiornando `@mavida/hub-auth` a `^1.14.0`.
+
+- **Step `subscribe`** (`AuthStep`): quando hub risponde `403 SubscriptionRequired` a `otp-verify`, `otp-verify-link` o `sso/session` (accesso valido ma nessun abbonamento) il client non lancia e non apre la sessione: salva il `billing_token` ricevuto (solo in memoria) e passa allo step `subscribe`, che `LoginScreen` mostra con `SubscribeStep`. La card si allarga (`.hub-auth__card--wide`).
+- **`SubscribeStep` e `SubscribePicker`** (`@mavida/hub-auth/ui`): `SubscribePicker` è di sola presentazione (listino, funzione di preventivo e di invio come props, nessun Provider) e si può montare anche altrove; con `preview` il pagamento è disattivato (l'anteprima della dashboard admin). Piano Fleet con siti inclusi e prezzo mensile, app a scelta, riepilogo con imponibile, IVA e totale **calcolati sempre da hub** (`POST /billing/quote`), dati di fatturazione (ragione sociale, partita IVA o codice fiscale, SDI, PEC, paese) e pulsante "Paga con PayPal".
+- **Nuovi metodi del client** (anche in `useHubAuth()`): `loadBillingCatalog()`, `billingQuote(selection)` e `startCheckout(order)`. Con il token di pagamento usano l'header `X-Billing-Token`; senza (anteprima admin) la sessione aperta. `startCheckout` crea l'ordine, salva il token in `sessionStorage` (`<storageKey>:billing`) e porta l'utente su PayPal (solo indirizzi `https`); nuova opzione `redirect` di `createHubAuth` per sostituire `window.location.assign`.
+- **Ritorno da PayPal** (`?billing=paid|pending|cancelled|error`, letto e tolto dall'URL all'avvio): `paid` con il token salvato apre la sessione con `POST /billing/complete` senza un nuovo codice; senza token compare la notice `payment_received`; `cancelled` riapre la scelta; `pending` e `error` mostrano `payment_pending` e `payment_failed`.
+- **Abbonamento scaduto a sessione aperta**: `GET /me` con `403 SubscriptionRequired`, `authFetch` e gli interceptor axios (403 con quel codice, solo se il token è ancora quello corrente) fanno uscire con la notice `subscription_required`; il prossimo accesso porta al pagamento.
+- **Nuove notice**: `subscription_required`, `payment_received`, `payment_pending`, `payment_failed` (`AuthNotice`, testi in `messages.notice`); nuovi testi `subscribe*`, `billing*Label` e gli errori `BillingDisabled`, `BillingNotConfigured`, `PlanNotMapped`, `PayPalUnavailable`, `InvalidSelection`, `InvalidPlan` in `errorMessage`.
+- Nuovi tipi esportati: `BillingCatalog`, `BillingPlan`, `BillingApp`, `BillingSelection`, `BillingQuote`, `BillingOrder`.
+- Test: 230 → 268 (`tests/billing.test.tsx`: 403 nel login, sessione senza abbonamento, rotte `/billing` con token e con sessione, ritorno da PayPal, `SubscribePicker`, `LoginScreen` allo step `subscribe`).
+
 ## 1.13.0 — 2026-10-21
 
 CTA di registrazione in evidenza con i giorni di prova e modale "Approfondisci" più larga. Nessuna modifica che rompa l'API pubblica. **I giorni di prova richiedono hub ≥ 0.261.0 (`trial_days` in `GET /auth/tool-config`): rilasciare prima hub e poi le app**; con un hub più vecchio la CTA resta senza giorni.

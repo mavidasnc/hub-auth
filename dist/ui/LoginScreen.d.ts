@@ -1,7 +1,7 @@
 /**
  * Schermata di login completa: card con logo, titolo, avviso di logout
  * forzato e lo step corrente del flusso (email, codice, magic link,
- * registrazione).
+ * registrazione, pagamento).
  *
  * Layout a due metà (dalla 1.3.0): quando c'è un pannello da mostrare, a
  * sinistra compare il pannello (logo, descrizione, avvisi o altro) e a destra il
@@ -18,6 +18,9 @@
  *
  * Dalla 1.12.0: `asideLink` verso una pagina della stessa origine (es. '/about/') si
  * apre in una modale (AboutDialog); l'indirizzo diretto resta una pagina intera.
+ *
+ * Dalla 1.14.0: lo step 'subscribe' (SubscribeStep) fa scegliere l'abbonamento e pagare con
+ * PayPal a chi ha l'accesso valido ma non un abbonamento; la card si allarga per il form.
  */
 import { type ReactNode } from 'react';
 import { type HubAuthMessages } from './messages.js';

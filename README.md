@@ -181,6 +181,26 @@ await client.register({ username, email, privacyAccepted: true });
 
 Con un hub più vecchio (senza `/auth/tool-config`) o non raggiungibile la configurazione resta `null`: nessun link di registrazione e nessun pannello, il login funziona come prima.
 
+## Pagamento dell'abbonamento (1.14.0, hub ≥ 0.267.0)
+
+Con i pagamenti accesi su hub (spunta «Abilitazione pagamenti» nella scheda Pagamenti di admin.mavida.com) un utente con l'accesso valido ma senza abbonamento per il tool riceve `403 SubscriptionRequired`: il login non fallisce, passa allo step **`subscribe`** (`LoginScreen` lo mostra da solo con `SubscribeStep`), dove sceglie piano Fleet e app, inserisce i dati di fatturazione e va su PayPal. Al ritorno la sessione si apre senza un nuovo codice. Con i pagamenti spenti (default) nulla cambia.
+
+- **Flusso**: `verifyOtp` / `verifyLink` / SSO → 403 con `details.billing_token` → step `subscribe` → `loadBillingCatalog()` → `billingQuote()` a ogni scelta (gli importi li calcola sempre hub) → `startCheckout()` (redirect a PayPal, token in `sessionStorage`) → ritorno con `?billing=paid` → `POST /billing/complete` → sessione.
+- **Esiti del ritorno** (`?billing=` letto e tolto dall'URL): `paid` con token salvato = accesso; `paid` senza token = notice `payment_received`; `cancelled` = si riapre la scelta; `pending` = `payment_pending`; `error` = `payment_failed`.
+- **Abbonamento scaduto durante l'uso**: `/me`, `authFetch` e gli interceptor axios riconoscono `403 SubscriptionRequired` e fanno uscire con la notice `subscription_required`.
+- **Anteprima** (dashboard admin): `SubscribePicker` non dipende dal client; con `preview` e senza `onSubmit` mostra la pagina di pagamento con prezzi reali senza permettere di comprare.
+
+```tsx
+import { SubscribePicker } from '@mavida/hub-auth/ui';
+const { loadBillingCatalog, billingQuote } = useHubAuth();   // sessione di un admin
+const catalog = await loadBillingCatalog();
+<SubscribePicker catalog={catalog} onQuote={billingQuote} preview />
+```
+
+- Opzione `redirect` di `createHubAuth` per sostituire `window.location.assign` (test, contenitori senza pagina).
+- Testi: `subscribe*`, `billingNameLabel`, `vatNumberLabel`, `taxCodeLabel`, `sdiCodeLabel`, `pecLabel`, `countryLabel`, `fiscalRequired`, `billingDisabled`, `billingUnavailable`, `paypalUnavailable`, `invalidSelection` e le notice `subscription_required`, `payment_received`, `payment_pending`, `payment_failed`.
+- Rilasciare **prima hub** (migration 171), poi le app con `@mavida/hub-auth` ≥ 1.14.0: un'app più vecchia, a pagamenti accesi, mostrerebbe l'errore del 403 invece del pagamento.
+
 ## Layout a due metà (1.3.0)
 
 Quando c'è qualcosa da mostrare, la schermata si divide: **pannello a sinistra** (descrizione, avvisi o altro), **login a destra**. Sotto i 900px il login passa sopra e il pannello sotto. Il contenuto del pannello arriva in due modi:

@@ -37,6 +37,9 @@ export function useHubAuth() {
         loadToolConfig: client.loadToolConfig,
         startRegister: client.startRegister,
         register: client.register,
+        loadBillingCatalog: client.loadBillingCatalog,
+        billingQuote: client.billingQuote,
+        startCheckout: client.startCheckout,
         refresh: client.refresh,
         logout: client.logout,
     };

@@ -4,7 +4,8 @@
 
 export { createHubAuth } from './client.js';
 export type {
-  AuthNotice, AuthState, AuthStatus, AuthStep, AxiosLike, HubAuthClient, HubAuthConfig, HubUser,
+  AuthNotice, AuthState, AuthStatus, AuthStep, AxiosLike, BillingApp, BillingCatalog, BillingOrder,
+  BillingPlan, BillingQuote, BillingSelection, HubAuthClient, HubAuthConfig, HubUser,
   RegisterData, ToolConfig,
 } from './client.js';
 export { HubAuthError, isHubAuthErrorCode, errorFromBody } from './errors.js';

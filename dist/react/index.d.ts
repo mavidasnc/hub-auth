@@ -28,6 +28,9 @@ export type UseHubAuthResult = AuthState & {
     loadToolConfig: HubAuthClient['loadToolConfig'];
     startRegister: HubAuthClient['startRegister'];
     register: HubAuthClient['register'];
+    loadBillingCatalog: HubAuthClient['loadBillingCatalog'];
+    billingQuote: HubAuthClient['billingQuote'];
+    startCheckout: HubAuthClient['startCheckout'];
     refresh: HubAuthClient['refresh'];
     logout: HubAuthClient['logout'];
 };

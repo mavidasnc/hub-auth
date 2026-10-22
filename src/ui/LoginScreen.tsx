@@ -1,7 +1,7 @@
 /**
  * Schermata di login completa: card con logo, titolo, avviso di logout
  * forzato e lo step corrente del flusso (email, codice, magic link,
- * registrazione).
+ * registrazione, pagamento).
  *
  * Layout a due metà (dalla 1.3.0): quando c'è un pannello da mostrare, a
  * sinistra compare il pannello (logo, descrizione, avvisi o altro) e a destra il
@@ -18,6 +18,9 @@
  *
  * Dalla 1.12.0: `asideLink` verso una pagina della stessa origine (es. '/about/') si
  * apre in una modale (AboutDialog); l'indirizzo diretto resta una pagina intera.
+ *
+ * Dalla 1.14.0: lo step 'subscribe' (SubscribeStep) fa scegliere l'abbonamento e pagare con
+ * PayPal a chi ha l'accesso valido ma non un abbonamento; la card si allarga per il form.
  */
 
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
@@ -28,6 +31,7 @@ import { LinkStep } from './LinkStep.js';
 import { OtpStep } from './OtpStep.js';
 import { RegisteredStep } from './RegisteredStep.js';
 import { RegisterStep } from './RegisterStep.js';
+import { SubscribeStep } from './SubscribeStep.js';
 import { EcosystemNav } from './EcosystemMenu.js';
 import { mergeMessages, type HubAuthMessages } from './messages.js';
 
@@ -194,7 +198,7 @@ export function LoginScreen({
   const logoInAside = split && aside == null && !!logo;
 
   const card = (
-    <div className="hub-auth__card">
+    <div className={`hub-auth__card${step === 'subscribe' ? ' hub-auth__card--wide' : ''}`}>
       {(logo || title || subtitle) && (
         <header className="hub-auth__header">
           {logo && <div className="hub-auth__logo">{logo}</div>}
@@ -203,7 +207,7 @@ export function LoginScreen({
         </header>
       )}
 
-      {notice && step === 'email' && (
+      {notice && (step === 'email' || step === 'subscribe') && (
         <p className="hub-auth__notice" role="status">{messages.notice[notice]}</p>
       )}
 
@@ -212,6 +216,7 @@ export function LoginScreen({
       {step === 'link' && <LinkStep messages={custom} />}
       {step === 'register' && <RegisterStep messages={custom} />}
       {step === 'registered' && <RegisteredStep messages={custom} />}
+      {step === 'subscribe' && <SubscribeStep messages={custom} />}
     </div>
   );
   // Footer sotto la card: testo dell'app e, se richiesto, i link alle altre app dell'ecosistema
