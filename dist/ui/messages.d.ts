@@ -58,6 +58,37 @@ export interface HubAuthMessages {
     registeredTitle: string;
     registeredText: string;
     backToLogin: string;
+    subscribeTitle: string;
+    subscribeIntro: string;
+    subscribeLoading: string;
+    subscribeUnavailable: string;
+    subscribePlans: string;
+    subscribeNoFleet: string;
+    subscribeSites: string;
+    subscribePerMonth: string;
+    subscribeApps: string;
+    subscribeLaunch: string;
+    subscribeSummary: string;
+    subscribeNet: string;
+    subscribeVat: string;
+    subscribeTotal: string;
+    subscribePerYear: string;
+    subscribeNeedSelection: string;
+    subscribeBilling: string;
+    billingNameLabel: string;
+    vatNumberLabel: string;
+    taxCodeLabel: string;
+    sdiCodeLabel: string;
+    pecLabel: string;
+    countryLabel: string;
+    fiscalRequired: string;
+    subscribePay: string;
+    subscribePaying: string;
+    subscribePreview: string;
+    billingDisabled: string;
+    billingUnavailable: string;
+    paypalUnavailable: string;
+    invalidSelection: string;
     ecosystemTitle: string;
     ecosystemMenu: string;
     notice: Record<AuthNotice, string>;
@@ -74,4 +105,4 @@ export declare function format(template: string, values: Record<string, string |
  * @param messages - Testi correnti
  * @param step - Step in cui è avvenuto l'errore (per il 401 di otp-verify)
  */
-export declare function errorMessage(err: unknown, messages: HubAuthMessages, step: 'email' | 'otp' | 'link' | 'register'): string;
+export declare function errorMessage(err: unknown, messages: HubAuthMessages, step: 'email' | 'otp' | 'link' | 'register' | 'subscribe'): string;

@@ -2,7 +2,7 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
 /**
  * Schermata di login completa: card con logo, titolo, avviso di logout
  * forzato e lo step corrente del flusso (email, codice, magic link,
- * registrazione).
+ * registrazione, pagamento).
  *
  * Layout a due metà (dalla 1.3.0): quando c'è un pannello da mostrare, a
  * sinistra compare il pannello (logo, descrizione, avvisi o altro) e a destra il
@@ -19,6 +19,9 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
  *
  * Dalla 1.12.0: `asideLink` verso una pagina della stessa origine (es. '/about/') si
  * apre in una modale (AboutDialog); l'indirizzo diretto resta una pagina intera.
+ *
+ * Dalla 1.14.0: lo step 'subscribe' (SubscribeStep) fa scegliere l'abbonamento e pagare con
+ * PayPal a chi ha l'accesso valido ma non un abbonamento; la card si allarga per il form.
  */
 import { useEffect, useRef, useState } from 'react';
 import { useHubAuth } from '../react/index.js';
@@ -28,6 +31,7 @@ import { LinkStep } from './LinkStep.js';
 import { OtpStep } from './OtpStep.js';
 import { RegisteredStep } from './RegisteredStep.js';
 import { RegisterStep } from './RegisterStep.js';
+import { SubscribeStep } from './SubscribeStep.js';
 import { EcosystemNav } from './EcosystemMenu.js';
 import { mergeMessages } from './messages.js';
 /** true se l'indirizzo è un percorso della stessa origine (es. '/about/'), non un URL assoluto né '//host' */
@@ -79,7 +83,7 @@ export function LoginScreen({ title, subtitle, logo, footer, messages: custom, r
     // Con il pannello di default il logo sta nel pannello (e si toglie dalla card sopra i 900px);
     // con un `aside` personalizzato resta nella card, che è l'unico posto dove l'app lo mette.
     const logoInAside = split && aside == null && !!logo;
-    const card = (_jsxs("div", { className: "hub-auth__card", children: [(logo || title || subtitle) && (_jsxs("header", { className: "hub-auth__header", children: [logo && _jsx("div", { className: "hub-auth__logo", children: logo }), title && _jsx("h1", { className: "hub-auth__title", children: title }), subtitle && _jsx("p", { className: "hub-auth__subtitle", children: subtitle })] })), notice && step === 'email' && (_jsx("p", { className: "hub-auth__notice", role: "status", children: messages.notice[notice] })), step === 'email' && _jsx(EmailStep, { messages: custom, signup: signup }), step === 'otp' && _jsx(OtpStep, { messages: custom, resendCooldown: resendCooldown, signup: signup }), step === 'link' && _jsx(LinkStep, { messages: custom }), step === 'register' && _jsx(RegisterStep, { messages: custom }), step === 'registered' && _jsx(RegisteredStep, { messages: custom })] }));
+    const card = (_jsxs("div", { className: `hub-auth__card${step === 'subscribe' ? ' hub-auth__card--wide' : ''}`, children: [(logo || title || subtitle) && (_jsxs("header", { className: "hub-auth__header", children: [logo && _jsx("div", { className: "hub-auth__logo", children: logo }), title && _jsx("h1", { className: "hub-auth__title", children: title }), subtitle && _jsx("p", { className: "hub-auth__subtitle", children: subtitle })] })), notice && (step === 'email' || step === 'subscribe') && (_jsx("p", { className: "hub-auth__notice", role: "status", children: messages.notice[notice] })), step === 'email' && _jsx(EmailStep, { messages: custom, signup: signup }), step === 'otp' && _jsx(OtpStep, { messages: custom, resendCooldown: resendCooldown, signup: signup }), step === 'link' && _jsx(LinkStep, { messages: custom }), step === 'register' && _jsx(RegisterStep, { messages: custom }), step === 'registered' && _jsx(RegisteredStep, { messages: custom }), step === 'subscribe' && _jsx(SubscribeStep, { messages: custom })] }));
     // Footer sotto la card: testo dell'app e, se richiesto, i link alle altre app dell'ecosistema
     const footerNode = (footer || ecosystem) && (_jsxs("footer", { className: "hub-auth__footer", children: [footer, ecosystem && _jsx(EcosystemNav, { current: client.tool ?? tool?.key, messages: custom })] }));
     if (!split) {

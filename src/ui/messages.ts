@@ -61,6 +61,37 @@ export interface HubAuthMessages {
   registeredTitle: string;
   registeredText: string;
   backToLogin: string;
+  subscribeTitle: string;
+  subscribeIntro: string;
+  subscribeLoading: string;
+  subscribeUnavailable: string;
+  subscribePlans: string;
+  subscribeNoFleet: string;
+  subscribeSites: string;
+  subscribePerMonth: string;
+  subscribeApps: string;
+  subscribeLaunch: string;
+  subscribeSummary: string;
+  subscribeNet: string;
+  subscribeVat: string;
+  subscribeTotal: string;
+  subscribePerYear: string;
+  subscribeNeedSelection: string;
+  subscribeBilling: string;
+  billingNameLabel: string;
+  vatNumberLabel: string;
+  taxCodeLabel: string;
+  sdiCodeLabel: string;
+  pecLabel: string;
+  countryLabel: string;
+  fiscalRequired: string;
+  subscribePay: string;
+  subscribePaying: string;
+  subscribePreview: string;
+  billingDisabled: string;
+  billingUnavailable: string;
+  paypalUnavailable: string;
+  invalidSelection: string;
   ecosystemTitle: string;
   ecosystemMenu: string;
   notice: Record<AuthNotice, string>;
@@ -117,6 +148,37 @@ export const defaultMessages: HubAuthMessages = {
   registeredTitle: 'Registrazione ricevuta',
   registeredText: 'Grazie! Abbiamo registrato la tua richiesta per {email}. Riceverai una email appena il tuo account sarà attivato.',
   backToLogin: "Torna all'accesso",
+  subscribeTitle: 'Scegli il tuo abbonamento',
+  subscribeIntro: "Per usare questo servizio serve un abbonamento annuale. Il pagamento avviene su PayPal, in modo sicuro.",
+  subscribeLoading: 'Caricamento del listino...',
+  subscribeUnavailable: 'I pagamenti non sono al momento disponibili. Riprova più tardi.',
+  subscribePlans: 'Piano Fleet',
+  subscribeNoFleet: 'Solo le app, senza Fleet',
+  subscribeSites: 'fino a {sites} siti',
+  subscribePerMonth: '{price} al mese',
+  subscribeApps: 'App',
+  subscribeLaunch: 'Prezzo di lancio valido fino al {date}',
+  subscribeSummary: 'Riepilogo',
+  subscribeNet: 'Imponibile',
+  subscribeVat: 'IVA {rate}%',
+  subscribeTotal: 'Totale',
+  subscribePerYear: 'Pagamento annuale anticipato',
+  subscribeNeedSelection: "Scegli un piano o almeno un'app.",
+  subscribeBilling: 'Dati di fatturazione',
+  billingNameLabel: 'Ragione sociale o nome e cognome',
+  vatNumberLabel: 'Partita IVA',
+  taxCodeLabel: 'Codice fiscale',
+  sdiCodeLabel: 'Codice SDI',
+  pecLabel: 'PEC',
+  countryLabel: 'Paese (codice a due lettere)',
+  fiscalRequired: 'Indica la partita IVA o il codice fiscale.',
+  subscribePay: 'Paga con PayPal',
+  subscribePaying: 'Reindirizzamento a PayPal...',
+  subscribePreview: 'Anteprima: il pagamento è disattivato.',
+  billingDisabled: 'I pagamenti non sono attivi.',
+  billingUnavailable: 'Il piano scelto non è ancora disponibile.',
+  paypalUnavailable: 'PayPal non è raggiungibile in questo momento. Riprova.',
+  invalidSelection: 'La scelta non è valida.',
   ecosystemTitle: 'Le altre app Mavida',
   ecosystemMenu: 'App Mavida',
   notice: {
@@ -125,6 +187,10 @@ export const defaultMessages: HubAuthMessages = {
     trial_expired: 'Il periodo di prova è terminato.',
     link_invalid: 'Il link di accesso non è valido, è scaduto o è già stato usato. Richiedi un nuovo codice.',
     coupon_invalid: 'Coupon non valido',
+    subscription_required: 'Il tuo abbonamento è scaduto o non è ancora attivo: accedi di nuovo per rinnovarlo.',
+    payment_received: 'Pagamento ricevuto. Accedi con il tuo indirizzo email per iniziare.',
+    payment_pending: 'Pagamento in elaborazione: tra qualche minuto potrai accedere.',
+    payment_failed: 'Il pagamento non è stato completato. Se hai già pagato attendi qualche minuto e riprova ad accedere.',
   },
 };
 
@@ -150,7 +216,7 @@ export function format(template: string, values: Record<string, string | number>
  * @param messages - Testi correnti
  * @param step - Step in cui è avvenuto l'errore (per il 401 di otp-verify)
  */
-export function errorMessage(err: unknown, messages: HubAuthMessages, step: 'email' | 'otp' | 'link' | 'register'): string {
+export function errorMessage(err: unknown, messages: HubAuthMessages, step: 'email' | 'otp' | 'link' | 'register' | 'subscribe'): string {
   if (!(err instanceof HubAuthError)) return messages.genericError;
   switch (err.code) {
     case 'InvalidEmail': return messages.invalidEmail;
@@ -163,6 +229,13 @@ export function errorMessage(err: unknown, messages: HubAuthMessages, step: 'ema
     case 'SignupDisabled': return messages.signupDisabled;
     case 'PrivacyVersionMismatch': return messages.privacyChanged;
     case 'InvalidCoupon': return messages.invalidCoupon;
+    case 'SubscriptionRequired': return messages.notice.subscription_required;
+    case 'BillingDisabled': return messages.billingDisabled;
+    case 'BillingNotConfigured':
+    case 'PlanNotMapped': return messages.billingUnavailable;
+    case 'PayPalUnavailable': return messages.paypalUnavailable;
+    case 'InvalidSelection':
+    case 'InvalidPlan': return messages.invalidSelection;
   }
   if (step === 'otp' && err.status === 401) return messages.invalidCode;
   // 429 e 5xx: hub restituisce un messaggio leggibile (es. "Troppi tentativi...")

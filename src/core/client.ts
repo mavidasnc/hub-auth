@@ -55,9 +55,14 @@ export type AuthStatus = 'checking' | 'anonymous' | 'authenticated';
  * - trial_expired: 403 TrialExpired (scadenza dell'account superata)
  * - link_invalid: il magic link dell'email è sconosciuto, scaduto o già usato
  * - coupon_invalid: il coupon del link di invito (?coupon=) non è valido
+ * - subscription_required: 403 SubscriptionRequired a sessione aperta (abbonamento scaduto, dalla 1.14.0)
+ * - payment_received: tornato da PayPal a pagamento riuscito ma senza una sessione da riprendere
+ * - payment_pending: PayPal non ha ancora confermato il pagamento (arriva dal webhook)
+ * - payment_failed: il pagamento non è andato a buon fine o non è stato confermato
  */
 export type AuthNotice =
-  | 'session_expired' | 'tool_not_enabled' | 'trial_expired' | 'link_invalid' | 'coupon_invalid';
+  | 'session_expired' | 'tool_not_enabled' | 'trial_expired' | 'link_invalid' | 'coupon_invalid'
+  | 'subscription_required' | 'payment_received' | 'payment_pending' | 'payment_failed';
 
 /** Utente della sessione, come restituito da GET /me */
 export interface HubUser {
@@ -73,8 +78,78 @@ export interface HubUser {
   tools: string[];
 }
 
-/** Step del flusso di login */
-export type AuthStep = 'email' | 'otp' | 'link' | 'register' | 'registered';
+/**
+ * Step del flusso di login. 'subscribe' (dalla 1.14.0): l'accesso è valido ma manca un
+ * abbonamento, si sceglie il piano e si paga (hub >= 0.267.0, pagamenti accesi)
+ */
+export type AuthStep = 'email' | 'otp' | 'link' | 'register' | 'registered' | 'subscribe';
+
+/** Piano Fleet del listino pubblico (GET /billing/catalog); gli importi sono in centesimi, IVA esclusa */
+export interface BillingPlan {
+  code: string;
+  label: string;
+  /** Prezzo mensile in vigore (di lancio o di listino) */
+  monthly_cents: number;
+  list_monthly_cents: number;
+  launch_monthly_cents: number;
+  app_discount_pct: number;
+  /** Siti inclusi (dal piano interno associato); null se non noto */
+  sites_max: number | null;
+}
+
+/** App acquistabile a parte */
+export interface BillingApp {
+  key: string;
+  label: string;
+}
+
+/** Listino per la pagina di pagamento (GET /billing/catalog, hub >= 0.267.0) */
+export interface BillingCatalog {
+  /** false: i pagamenti non sono accesi (il listino serve solo per l'anteprima) */
+  enabled: boolean;
+  currency: string;
+  vat_rate_pct: number;
+  price_basis: 'launch' | 'list';
+  launch_until: string | null;
+  months: number;
+  plans: BillingPlan[];
+  apps: BillingApp[];
+  app_tiers: { count: number; base_monthly_cents: number }[];
+  no_fleet_markup_pct: number;
+}
+
+/** Cosa si vuole comprare: un piano Fleet con o senza app, oppure sole app */
+export interface BillingSelection {
+  /** Codice del piano (null = solo app) */
+  fleet_plan: string | null;
+  apps: string[];
+}
+
+/** Prezzo di una scelta, calcolato da hub (POST /billing/quote); importi in centesimi */
+export interface BillingQuote {
+  price_basis: 'launch' | 'list';
+  fleet_plan: string | null;
+  apps: string[];
+  fleet_monthly_cents: number;
+  app_monthly_cents: number;
+  monthly_cents: number;
+  net_cents: number;
+  vat_cents: number;
+  total_cents: number;
+  vat_rate_pct: number;
+  currency: string;
+}
+
+/** Ordine: la scelta più i dati per la fattura (serve la partita IVA o il codice fiscale) */
+export interface BillingOrder extends BillingSelection {
+  billing_name: string;
+  vat_number?: string;
+  tax_code?: string;
+  sdi_code?: string;
+  pec_email?: string;
+  /** Codice paese a due lettere (default IT) */
+  billing_country?: string;
+}
 
 /**
  * Configurazione pubblica della schermata di login (GET /auth/tool-config)
@@ -180,6 +255,11 @@ export interface HubAuthConfig {
   legacyKeys?: string[];
   /** Implementazione di fetch (default: globalThis.fetch) */
   fetch?: typeof fetch;
+  /**
+   * Naviga verso un indirizzo (default: `window.location.assign`). Serve a `startCheckout`
+   * per portare l'utente su PayPal; si sostituisce nei test o in un contenitore che non usa la pagina.
+   */
+  redirect?: (url: string) => void;
   /** Callback dopo ogni logout (esplicito o forzato), per la pulizia dei dati del progetto */
   onLogout?: (info: { userId: string | null; notice: AuthNotice | null }) => void;
 }
@@ -245,6 +325,19 @@ export interface HubAuthClient {
    * PrivacyNotAccepted, SignupDisabled, PrivacyVersionMismatch, 429, rete...).
    */
   register(data: RegisterData): Promise<void>;
+  /**
+   * Listino dei piani e delle app (GET /billing/catalog, dalla 1.14.0). Usa il token di
+   * pagamento dello step 'subscribe' oppure, senza, la sessione aperta (anteprima admin).
+   */
+  loadBillingCatalog(): Promise<BillingCatalog>;
+  /** Prezzo di una scelta calcolato da hub (POST /billing/quote): il client non calcola mai gli importi */
+  billingQuote(selection: BillingSelection): Promise<BillingQuote>;
+  /**
+   * Crea l'ordine (POST /billing/orders) e porta l'utente a PayPal; al ritorno la pagina riparte
+   * e la sessione si apre da sola. Lancia HubAuthError (BillingDisabled, PlanNotMapped,
+   * PayPalUnavailable, ValidationError...).
+   */
+  startCheckout(order: BillingOrder): Promise<void>;
   /** Ricarica utente e tool da GET /me */
   refresh(): Promise<void>;
   /**
@@ -417,6 +510,34 @@ function readCouponFromUrl(): string | null {
   return COUPON_RE.test(value) ? value : null;
 }
 
+/** Parametro della query con cui hub riporta all'app dopo PayPal (?billing=paid|pending|cancelled|error) */
+const BILLING_RETURN_PARAM = 'billing';
+
+type BillingReturn = 'paid' | 'pending' | 'cancelled' | 'error';
+
+/**
+ * Legge l'esito del ritorno da PayPal dalla query dell'URL e lo RIMUOVE (history.replaceState),
+ * così un ricaricamento non lo rielabora.
+ *
+ * @returns l'esito se presente e noto, altrimenti null
+ */
+function takeBillingReturn(): BillingReturn | null {
+  if (typeof window === 'undefined' || !window.location?.search) return null;
+  const params = new URLSearchParams(window.location.search);
+  const value = params.get(BILLING_RETURN_PARAM);
+  if (value === null) return null;
+
+  params.delete(BILLING_RETURN_PARAM);
+  const rest = params.toString();
+  try {
+    const { pathname, hash } = window.location;
+    window.history.replaceState(window.history.state, '', `${pathname}${rest ? `?${rest}` : ''}${hash}`);
+  } catch {
+    // history non disponibile: l'esito resta nell'URL ma non cambia nulla se riletto
+  }
+  return value === 'paid' || value === 'pending' || value === 'cancelled' || value === 'error' ? value : null;
+}
+
 /** Parametro del fragment che porta il token del magic link (#hub_otp=...) */
 const LINK_PARAM = 'hub_otp';
 
@@ -461,11 +582,28 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
   // Il magic link è attivo di default; il token vive solo in memoria (mai nello stato osservabile)
   let linkToken: string | null = config.magicLink === false ? null : takeLinkFromUrl();
 
+  // Pagamento: token di hub per le rotte /billing/* (30 minuti, solo in memoria e, durante il
+  // viaggio su PayPal, in sessionStorage). Dopo il ritorno da PayPal l'esito arriva nella query.
+  const billingKey = `${config.storageKey}:billing`;
+  const billingReturn = takeBillingReturn();
+  let billingToken: string | null = null;
+  if (billingReturn) {
+    try {
+      billingToken = window.sessionStorage.getItem(billingKey);
+    } catch {
+      // sessionStorage non accessibile: si riparte dal login
+    }
+  }
+
   let state: AuthState = {
     status: 'checking',
     user: null,
     token: null,
-    notice: null,
+    // Pagamento riuscito ma senza token da riprendere, in attesa o fallito: lo si dice nel login
+    notice: billingReturn === 'pending' ? 'payment_pending'
+      : billingReturn === 'error' ? 'payment_failed'
+        : billingReturn === 'paid' && !billingToken ? 'payment_received'
+          : null,
     step: 'email',
     toolConfig: null,
     inviteCoupon: readCouponFromUrl(),
@@ -574,6 +712,7 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
 
   function forceLogout(notice?: AuthNotice): void {
     const userId = state.user?.user_id || null;
+    clearBilling();
     set({
       status: 'anonymous',
       user: null,
@@ -766,6 +905,11 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
       logout('trial_expired');
       return;
     }
+    // Abbonamento scaduto a sessione aperta: si esce, al prossimo accesso compare il pagamento
+    if (error.code === 'SubscriptionRequired') {
+      logout('subscription_required');
+      return;
+    }
     // 5xx o risposta inattesa: come per la rete assente, si prosegue con la sessione salvata
     console.warn('[hub-auth] GET /me non disponibile:', error.message);
     set({ status: 'authenticated', offline: true });
@@ -806,6 +950,10 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
       announce('login');
       // Profilo, ruolo e tool arrivano da /me (con le stesse regole del boot)
       await refresh();
+    } catch (err) {
+      // Codice giusto ma manca l'abbonamento: non è un errore del codice, si passa a pagare
+      if (err instanceof HubAuthError && enterSubscribe(err)) return;
+      throw err;
     } finally {
       set({ loading: false });
     }
@@ -832,6 +980,11 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
       // riprovare, si torna al login con l'avviso. Rete, 429 e 5xx vengono lanciati
       // e il link resta valido per un nuovo tentativo.
       if (err instanceof HubAuthError) {
+        // Link valido ma manca l'abbonamento: il link è consumato, si passa a pagare
+        if (enterSubscribe(err)) {
+          linkToken = null;
+          return;
+        }
         const notice: AuthNotice | null =
           err.code === 'ToolNotEnabled' ? 'tool_not_enabled'
             : err.code === 'TrialExpired' ? 'trial_expired'
@@ -852,6 +1005,125 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
   function cancelLink(): void {
     linkToken = null;
     set({ step: 'email', notice: null });
+  }
+
+  // ── Pagamento (hub >= 0.267.0) ─────────────────────────────────────────────
+
+  /** Dimentica il token di pagamento, anche quello lasciato in sessionStorage per il viaggio su PayPal */
+  function clearBilling(): void {
+    billingToken = null;
+    try {
+      window.sessionStorage.removeItem(billingKey);
+    } catch {
+      // sessionStorage non accessibile: non c'è nulla da togliere
+    }
+  }
+
+  /**
+   * Un 403 SubscriptionRequired con il token di pagamento porta allo step 'subscribe'.
+   *
+   * @param notice - avviso da mostrare sopra la scelta (opzionale)
+   * @returns true se l'errore era proprio quello e lo step è stato aperto
+   */
+  function enterSubscribe(err: HubAuthError, notice: AuthNotice | null = null): boolean {
+    const token = err.details?.billing_token;
+    if (err.code !== 'SubscriptionRequired' || typeof token !== 'string' || !token) return false;
+    billingToken = token;
+    set({ status: 'anonymous', step: 'subscribe', notice, loading: false, pendingEmail: '', otpRequestedAt: null });
+    return true;
+  }
+
+  /**
+   * Richiesta alle rotte /billing/*: con il token di pagamento (step 'subscribe') oppure,
+   * senza, con la sessione aperta (anteprima dalla dashboard admin). Lancia HubAuthError.
+   */
+  async function billingRequest<T>(path: string, method: 'GET' | 'POST', body?: unknown): Promise<T> {
+    const headers: Record<string, string> = body === undefined ? {} : { 'Content-Type': 'application/json' };
+    const init: RequestInit = { method, headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }) };
+    let res: Response;
+    try {
+      if (billingToken) {
+        headers['X-Billing-Token'] = billingToken;
+        res = await doFetch(url(path), init);
+      } else {
+        res = await authFetch(path, init);
+      }
+    } catch (err) {
+      throw networkError(err);
+    }
+    const data = (await res.json().catch(() => null)) as (T & HubErrorBody) | null;
+    if (!res.ok) {
+      // Token di pagamento scaduto (30 minuti): si riparte dal login
+      if (res.status === 401 && billingToken) {
+        clearBilling();
+        set({ step: 'email', notice: 'session_expired' });
+      }
+      throw errorFromBody(res.status, data);
+    }
+    return data as T;
+  }
+
+  async function loadBillingCatalog(): Promise<BillingCatalog> {
+    const data = await billingRequest<BillingCatalog>('billing/catalog', 'GET');
+    if (!data || !Array.isArray(data.plans) || !Array.isArray(data.apps)) {
+      throw new HubAuthError('Risposta non valida dal server.', 200, 'InvalidResponse');
+    }
+    return data;
+  }
+
+  function billingQuote(selection: BillingSelection): Promise<BillingQuote> {
+    return billingRequest<BillingQuote>('billing/quote', 'POST', selection);
+  }
+
+  async function startCheckout(order: BillingOrder): Promise<void> {
+    set({ loading: true, notice: null });
+    try {
+      const body: Record<string, unknown> = { ...order };
+      // App a cui tornare dopo PayPal (con il token di pagamento conta quella del token)
+      if (config.tool) body.tool = config.tool;
+      const data = await billingRequest<{ approve_url?: string }>('billing/orders', 'POST', body);
+      const approve = data?.approve_url;
+      if (typeof approve !== 'string' || !/^https:\/\//i.test(approve)) {
+        throw new HubAuthError('Risposta non valida dal server.', 200, 'InvalidResponse');
+      }
+      // La pagina riparte da zero al ritorno: il token deve sopravvivere al viaggio su PayPal
+      if (billingToken) {
+        try {
+          window.sessionStorage.setItem(billingKey, billingToken);
+        } catch {
+          // sessionStorage non accessibile: al ritorno si riparte dal login
+        }
+      }
+      (config.redirect ?? ((target) => window.location.assign(target)))(approve);
+    } finally {
+      set({ loading: false });
+    }
+  }
+
+  /**
+   * Al ritorno da PayPal a pagamento riuscito: con il token di pagamento salvato si apre la
+   * sessione (POST /billing/complete) senza un nuovo codice OTP. Se hub non vede ancora il
+   * pagamento o il token è scaduto si torna al login con un avviso.
+   */
+  async function completeCheckout(): Promise<void> {
+    set({ loading: true, notice: null });
+    try {
+      const data = await billingRequest<LoginResponse>('billing/complete', 'POST', {});
+      if (!data?.session_token || !data.user_id) {
+        throw new HubAuthError('Risposta non valida dal server.', 200, 'InvalidResponse');
+      }
+      clearBilling();
+      openSession(data.session_token, partialUser(data.user_id, data.email ?? null));
+      set({ step: 'email', pendingEmail: '', otpRequestedAt: null });
+      announce('login');
+      await refresh();
+    } catch (err) {
+      const waiting = err instanceof HubAuthError && err.code === 'SubscriptionRequired';
+      clearBilling();
+      set({ status: 'anonymous', step: 'email', notice: waiting ? 'payment_pending' : 'payment_received' });
+    } finally {
+      set({ loading: false });
+    }
   }
 
   // ── Configurazione pubblica e registrazione ────────────────────────────────
@@ -995,6 +1267,8 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
     }
     if (!silent) {
       const error = errorFromBody(res.status, data);
+      // Utente in SSO ma senza abbonamento per questo tool: si passa direttamente a pagare
+      if (enterSubscribe(error)) return false;
       const notice: AuthNotice | null =
         error.code === 'ToolNotEnabled' ? 'tool_not_enabled'
           : error.code === 'TrialExpired' ? 'trial_expired'
@@ -1065,6 +1339,11 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
     }
     const res = await doFetch(target, { ...init, headers });
     if (res.status === 401) handleUnauthorized(bearerOf(headers.get('Authorization')));
+    // Abbonamento scaduto a sessione aperta: si esce con l'avviso (solo se la sessione è ancora quella)
+    if (res.status === 403 && state.token && bearerOf(headers.get('Authorization')) === state.token) {
+      const body = (await res.clone().json().catch(() => null)) as HubErrorBody | null;
+      if (body?.error === 'SubscriptionRequired') logout('subscription_required');
+    }
     return res;
   }
 
@@ -1089,6 +1368,10 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
       (error) => {
         if (error?.response?.status === 401) {
           handleUnauthorized(bearerOf(readHeader(error.config?.headers, 'Authorization')));
+        } else if (error?.response?.status === 403 && error.response.data?.error === 'SubscriptionRequired'
+          && state.token && bearerOf(readHeader(error.config?.headers, 'Authorization')) === state.token) {
+          // Abbonamento scaduto a sessione aperta: si esce con l'avviso
+          logout('subscription_required');
         }
         return Promise.reject(error);
       },
@@ -1104,6 +1387,17 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
   /** Applica la sessione letta dallo storage (o nessuna) e avvia la verifica */
   function boot(session: StoredSession | null, fromLegacy: boolean): void {
     if (!session) {
+      // Tornato da PayPal: a pagamento riuscito si apre la sessione col token salvato; se ha
+      // annullato si riapre la scelta; negli altri casi il token non serve più
+      if (billingReturn === 'paid' && billingToken) {
+        void completeCheckout();
+        return;
+      }
+      if (billingReturn === 'cancelled' && billingToken) {
+        set({ status: 'anonymous', step: 'subscribe' });
+        return;
+      }
+      if (billingToken) clearBilling();
       // Aperto da un magic link: si attende la conferma dell'utente (step 'link')
       if (linkToken) {
         set({ status: 'anonymous', step: 'link' });
@@ -1117,8 +1411,9 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
       set({ status: 'anonymous' });
       return;
     }
-    // Sessione già presente: un eventuale magic link aperto in più non serve
+    // Sessione già presente: un eventuale magic link aperto in più non serve, né il token di pagamento
     linkToken = null;
+    if (billingToken) clearBilling();
     openSession(session.token, session.user);
     if (fromLegacy) persist();
     void refresh();
@@ -1174,10 +1469,16 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
     verifyLink,
     cancelLink,
     adoptSession,
-    resetToEmail: () => set({ step: 'email', pendingEmail: '', otpRequestedAt: null }),
+    resetToEmail: () => {
+      clearBilling();
+      set({ step: 'email', pendingEmail: '', otpRequestedAt: null });
+    },
     loadToolConfig,
     startRegister,
     register,
+    loadBillingCatalog,
+    billingQuote,
+    startCheckout,
     refresh,
     logout,
     forceLogout,

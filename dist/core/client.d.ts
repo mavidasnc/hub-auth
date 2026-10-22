@@ -51,8 +51,12 @@ export type AuthStatus = 'checking' | 'anonymous' | 'authenticated';
  * - trial_expired: 403 TrialExpired (scadenza dell'account superata)
  * - link_invalid: il magic link dell'email è sconosciuto, scaduto o già usato
  * - coupon_invalid: il coupon del link di invito (?coupon=) non è valido
+ * - subscription_required: 403 SubscriptionRequired a sessione aperta (abbonamento scaduto, dalla 1.14.0)
+ * - payment_received: tornato da PayPal a pagamento riuscito ma senza una sessione da riprendere
+ * - payment_pending: PayPal non ha ancora confermato il pagamento (arriva dal webhook)
+ * - payment_failed: il pagamento non è andato a buon fine o non è stato confermato
  */
-export type AuthNotice = 'session_expired' | 'tool_not_enabled' | 'trial_expired' | 'link_invalid' | 'coupon_invalid';
+export type AuthNotice = 'session_expired' | 'tool_not_enabled' | 'trial_expired' | 'link_invalid' | 'coupon_invalid' | 'subscription_required' | 'payment_received' | 'payment_pending' | 'payment_failed';
 /** Utente della sessione, come restituito da GET /me */
 export interface HubUser {
     user_id: string;
@@ -66,8 +70,75 @@ export interface HubUser {
     /** Chiavi dei tool effettivi dell'utente */
     tools: string[];
 }
-/** Step del flusso di login */
-export type AuthStep = 'email' | 'otp' | 'link' | 'register' | 'registered';
+/**
+ * Step del flusso di login. 'subscribe' (dalla 1.14.0): l'accesso è valido ma manca un
+ * abbonamento, si sceglie il piano e si paga (hub >= 0.267.0, pagamenti accesi)
+ */
+export type AuthStep = 'email' | 'otp' | 'link' | 'register' | 'registered' | 'subscribe';
+/** Piano Fleet del listino pubblico (GET /billing/catalog); gli importi sono in centesimi, IVA esclusa */
+export interface BillingPlan {
+    code: string;
+    label: string;
+    /** Prezzo mensile in vigore (di lancio o di listino) */
+    monthly_cents: number;
+    list_monthly_cents: number;
+    launch_monthly_cents: number;
+    app_discount_pct: number;
+    /** Siti inclusi (dal piano interno associato); null se non noto */
+    sites_max: number | null;
+}
+/** App acquistabile a parte */
+export interface BillingApp {
+    key: string;
+    label: string;
+}
+/** Listino per la pagina di pagamento (GET /billing/catalog, hub >= 0.267.0) */
+export interface BillingCatalog {
+    /** false: i pagamenti non sono accesi (il listino serve solo per l'anteprima) */
+    enabled: boolean;
+    currency: string;
+    vat_rate_pct: number;
+    price_basis: 'launch' | 'list';
+    launch_until: string | null;
+    months: number;
+    plans: BillingPlan[];
+    apps: BillingApp[];
+    app_tiers: {
+        count: number;
+        base_monthly_cents: number;
+    }[];
+    no_fleet_markup_pct: number;
+}
+/** Cosa si vuole comprare: un piano Fleet con o senza app, oppure sole app */
+export interface BillingSelection {
+    /** Codice del piano (null = solo app) */
+    fleet_plan: string | null;
+    apps: string[];
+}
+/** Prezzo di una scelta, calcolato da hub (POST /billing/quote); importi in centesimi */
+export interface BillingQuote {
+    price_basis: 'launch' | 'list';
+    fleet_plan: string | null;
+    apps: string[];
+    fleet_monthly_cents: number;
+    app_monthly_cents: number;
+    monthly_cents: number;
+    net_cents: number;
+    vat_cents: number;
+    total_cents: number;
+    vat_rate_pct: number;
+    currency: string;
+}
+/** Ordine: la scelta più i dati per la fattura (serve la partita IVA o il codice fiscale) */
+export interface BillingOrder extends BillingSelection {
+    billing_name: string;
+    vat_number?: string;
+    tax_code?: string;
+    sdi_code?: string;
+    pec_email?: string;
+    /** Codice paese a due lettere (default IT) */
+    billing_country?: string;
+}
 /**
  * Configurazione pubblica della schermata di login (GET /auth/tool-config)
  * - tool: etichetta, descrizione e avviso del tool (null se `tool` non è
@@ -173,6 +244,11 @@ export interface HubAuthConfig {
     legacyKeys?: string[];
     /** Implementazione di fetch (default: globalThis.fetch) */
     fetch?: typeof fetch;
+    /**
+     * Naviga verso un indirizzo (default: `window.location.assign`). Serve a `startCheckout`
+     * per portare l'utente su PayPal; si sostituisce nei test o in un contenitore che non usa la pagina.
+     */
+    redirect?: (url: string) => void;
     /** Callback dopo ogni logout (esplicito o forzato), per la pulizia dei dati del progetto */
     onLogout?: (info: {
         userId: string | null;
@@ -247,6 +323,19 @@ export interface HubAuthClient {
      * PrivacyNotAccepted, SignupDisabled, PrivacyVersionMismatch, 429, rete...).
      */
     register(data: RegisterData): Promise<void>;
+    /**
+     * Listino dei piani e delle app (GET /billing/catalog, dalla 1.14.0). Usa il token di
+     * pagamento dello step 'subscribe' oppure, senza, la sessione aperta (anteprima admin).
+     */
+    loadBillingCatalog(): Promise<BillingCatalog>;
+    /** Prezzo di una scelta calcolato da hub (POST /billing/quote): il client non calcola mai gli importi */
+    billingQuote(selection: BillingSelection): Promise<BillingQuote>;
+    /**
+     * Crea l'ordine (POST /billing/orders) e porta l'utente a PayPal; al ritorno la pagina riparte
+     * e la sessione si apre da sola. Lancia HubAuthError (BillingDisabled, PlanNotMapped,
+     * PayPalUnavailable, ValidationError...).
+     */
+    startCheckout(order: BillingOrder): Promise<void>;
     /** Ricarica utente e tool da GET /me */
     refresh(): Promise<void>;
     /**

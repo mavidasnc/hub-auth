@@ -37,6 +37,9 @@ export type UseHubAuthResult = AuthState & {
   loadToolConfig: HubAuthClient['loadToolConfig'];
   startRegister: HubAuthClient['startRegister'];
   register: HubAuthClient['register'];
+  loadBillingCatalog: HubAuthClient['loadBillingCatalog'];
+  billingQuote: HubAuthClient['billingQuote'];
+  startCheckout: HubAuthClient['startCheckout'];
   refresh: HubAuthClient['refresh'];
   logout: HubAuthClient['logout'];
 };
@@ -57,6 +60,9 @@ export function useHubAuth(): UseHubAuthResult {
     loadToolConfig: client.loadToolConfig,
     startRegister: client.startRegister,
     register: client.register,
+    loadBillingCatalog: client.loadBillingCatalog,
+    billingQuote: client.billingQuote,
+    startCheckout: client.startCheckout,
     refresh: client.refresh,
     logout: client.logout,
   };
