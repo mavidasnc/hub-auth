@@ -7,7 +7,12 @@
  * `onSubmit` per vedere la pagina di pagamento senza poter comprare nulla.
  *
  * Gli importi non si calcolano qui: ogni cambio di scelta chiede il prezzo a hub
- * (`onQuote`), che lo calcola dal listino salvato nel database.
+ * (`onQuote`), che lo calcola dal listino salvato nel database. Fanno eccezione i soli
+ * importi di vetrina di ogni piano (mensile e annuale, mensile x `months`).
+ *
+ * Dalla 1.15.0 i piani sono tre colonne con descrizione, listino, mensile e annuale. Le app
+ * si scelgono (e c'è l'opzione "solo app") solo se il listino ne offre: con `apps` vuoto, come
+ * nella prima fase dei pagamenti, resta la scelta del piano e una riga sulle app incluse.
  */
 
 import { useEffect, useState, type FormEvent } from 'react';
@@ -39,6 +44,11 @@ function italianDate(iso: string): string {
   return y && m && d ? `${d}/${m}/${y}` : iso;
 }
 
+/** "1 mese" / "3 mesi" */
+function monthsLabel(months: number): string {
+  return months === 1 ? '1 mese' : `${months} mesi`;
+}
+
 /** Valore del radio "solo app" */
 const NO_FLEET = '__none__';
 
@@ -61,6 +71,9 @@ export function SubscribePicker({
   const selection: BillingSelection = { fleet_plan: plan === NO_FLEET ? null : plan, apps };
   const hasSelection = selection.fleet_plan !== null || apps.length > 0;
   const appsKey = apps.join(',');
+  // Le app si comprano a parte solo se il listino le offre (non nella prima fase dei pagamenti)
+  const sellsApps = catalog.apps.length > 0;
+  const needSelection = sellsApps ? messages.subscribeNeedSelection : messages.subscribeNeedPlan;
 
   // Il prezzo lo calcola hub a ogni cambio di scelta; una risposta tardiva di una scelta vecchia si scarta
   useEffect(() => {
@@ -86,7 +99,7 @@ export function SubscribePicker({
     setError('');
     if (!onSubmit || preview) return;
     if (!hasSelection) {
-      setError(messages.subscribeNeedSelection);
+      setError(needSelection);
       return;
     }
     if (billingName.trim().length < 2 || (!vatNumber.trim() && !taxCode.trim())) {
@@ -117,31 +130,47 @@ export function SubscribePicker({
 
       <fieldset className="hub-auth__fieldset" disabled={disabled}>
         <legend className="hub-auth__legend">{messages.subscribePlans}</legend>
-        {catalog.plans.map((p) => (
-          <label key={p.code} className={`hub-auth__option${plan === p.code ? ' hub-auth__option--selected' : ''}`}>
-            <input type="radio" name="hub-auth-plan" value={p.code}
-              checked={plan === p.code} onChange={() => setPlan(p.code)} />
+        <div className="hub-auth__plans">
+          {catalog.plans.map((p) => (
+            <label key={p.code}
+              className={`hub-auth__option hub-auth__option--plan${plan === p.code ? ' hub-auth__option--selected' : ''}`}>
+              <input type="radio" name="hub-auth-plan" value={p.code}
+                checked={plan === p.code} onChange={() => setPlan(p.code)} />
+              <span className="hub-auth__option-body">
+                <span className="hub-auth__option-title">{p.label}</span>
+                {p.description && <span className="hub-auth__option-desc">{p.description}</span>}
+                {p.sites_max != null && (
+                  <span className="hub-auth__option-note">{format(messages.subscribeSites, { sites: p.sites_max })}</span>
+                )}
+              </span>
+              <span className="hub-auth__option-price">
+                {catalog.price_basis === 'launch' && p.list_monthly_cents > p.monthly_cents && (
+                  <s className="hub-auth__option-list">
+                    {format(messages.subscribeListPrice, { price: money(p.list_monthly_cents, catalog.currency) })}
+                  </s>
+                )}
+                <span className="hub-auth__option-price-main">
+                  {format(messages.subscribePerMonth, { price: money(p.monthly_cents, catalog.currency) })}
+                </span>
+                <span className="hub-auth__option-note">
+                  {format(messages.subscribePerYearPrice, { price: money(p.monthly_cents * catalog.months, catalog.currency) })}
+                </span>
+              </span>
+            </label>
+          ))}
+        </div>
+        {sellsApps && (
+          <label className={`hub-auth__option${plan === NO_FLEET ? ' hub-auth__option--selected' : ''}`}>
+            <input type="radio" name="hub-auth-plan" value={NO_FLEET}
+              checked={plan === NO_FLEET} onChange={() => setPlan(NO_FLEET)} />
             <span className="hub-auth__option-body">
-              <span className="hub-auth__option-title">{p.label}</span>
-              {p.sites_max != null && (
-                <span className="hub-auth__option-note">{format(messages.subscribeSites, { sites: p.sites_max })}</span>
-              )}
-            </span>
-            <span className="hub-auth__option-price">
-              {format(messages.subscribePerMonth, { price: money(p.monthly_cents, catalog.currency) })}
+              <span className="hub-auth__option-title">{messages.subscribeNoFleet}</span>
             </span>
           </label>
-        ))}
-        <label className={`hub-auth__option${plan === NO_FLEET ? ' hub-auth__option--selected' : ''}`}>
-          <input type="radio" name="hub-auth-plan" value={NO_FLEET}
-            checked={plan === NO_FLEET} onChange={() => setPlan(NO_FLEET)} />
-          <span className="hub-auth__option-body">
-            <span className="hub-auth__option-title">{messages.subscribeNoFleet}</span>
-          </span>
-        </label>
+        )}
       </fieldset>
 
-      {catalog.apps.length > 0 && (
+      {sellsApps && (
         <fieldset className="hub-auth__fieldset" disabled={disabled}>
           <legend className="hub-auth__legend">{messages.subscribeApps}</legend>
           {catalog.apps.map((a) => (
@@ -151,6 +180,12 @@ export function SubscribePicker({
             </label>
           ))}
         </fieldset>
+      )}
+
+      {(catalog.apps_included_months ?? 0) > 0 && (
+        <p className="hub-auth__note">
+          {format(messages.subscribeAppsIncluded, { period: monthsLabel(catalog.apps_included_months ?? 0) })}
+        </p>
       )}
 
       {catalog.price_basis === 'launch' && catalog.launch_until && (
@@ -175,7 +210,7 @@ export function SubscribePicker({
             </div>
           </dl>
         ) : (
-          <p className="hub-auth__note">{messages.subscribeNeedSelection}</p>
+          <p className="hub-auth__note">{needSelection}</p>
         )}
         <p className="hub-auth__note">{messages.subscribePerYear}</p>
       </div>

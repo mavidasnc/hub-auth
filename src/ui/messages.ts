@@ -69,6 +69,9 @@ export interface HubAuthMessages {
   subscribeNoFleet: string;
   subscribeSites: string;
   subscribePerMonth: string;
+  subscribePerYearPrice: string;
+  subscribeListPrice: string;
+  subscribeAppsIncluded: string;
   subscribeApps: string;
   subscribeLaunch: string;
   subscribeSummary: string;
@@ -77,6 +80,7 @@ export interface HubAuthMessages {
   subscribeTotal: string;
   subscribePerYear: string;
   subscribeNeedSelection: string;
+  subscribeNeedPlan: string;
   subscribeBilling: string;
   billingNameLabel: string;
   vatNumberLabel: string;
@@ -156,6 +160,9 @@ export const defaultMessages: HubAuthMessages = {
   subscribeNoFleet: 'Solo le app, senza Fleet',
   subscribeSites: 'fino a {sites} siti',
   subscribePerMonth: '{price} al mese',
+  subscribePerYearPrice: '{price} all\'anno',
+  subscribeListPrice: 'Listino {price}',
+  subscribeAppsIncluded: 'Con un piano Fleet le app Mavida sono incluse per {period}.',
   subscribeApps: 'App',
   subscribeLaunch: 'Prezzo di lancio valido fino al {date}',
   subscribeSummary: 'Riepilogo',
@@ -164,6 +171,7 @@ export const defaultMessages: HubAuthMessages = {
   subscribeTotal: 'Totale',
   subscribePerYear: 'Pagamento annuale anticipato',
   subscribeNeedSelection: "Scegli un piano o almeno un'app.",
+  subscribeNeedPlan: 'Scegli un piano.',
   subscribeBilling: 'Dati di fatturazione',
   billingNameLabel: 'Ragione sociale o nome e cognome',
   vatNumberLabel: 'Partita IVA',

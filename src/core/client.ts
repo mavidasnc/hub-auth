@@ -88,6 +88,8 @@ export type AuthStep = 'email' | 'otp' | 'link' | 'register' | 'registered' | 's
 export interface BillingPlan {
   code: string;
   label: string;
+  /** Descrizione mostrata nella card del piano (hub >= 0.269.0); assente o null = nessuna */
+  description?: string | null;
   /** Prezzo mensile in vigore (di lancio o di listino) */
   monthly_cents: number;
   list_monthly_cents: number;
@@ -116,6 +118,8 @@ export interface BillingCatalog {
   apps: BillingApp[];
   app_tiers: { count: number; base_monthly_cents: number }[];
   no_fleet_markup_pct: number;
+  /** Mesi di app incluse con un piano Fleet (hub >= 0.269.0); assente o 0 = nessuna riga informativa */
+  apps_included_months?: number;
 }
 
 /** Cosa si vuole comprare: un piano Fleet con o senza app, oppure sole app */

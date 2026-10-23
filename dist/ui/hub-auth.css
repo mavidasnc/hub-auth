@@ -752,7 +752,8 @@
  * Scelta del piano, riepilogo con IVA e dati di fatturazione (SubscribeStep, SubscribePicker).
  */
 .hub-auth__card--wide {
-  max-width: max(var(--hub-auth-card-width), 560px);
+  /* Tre piani in colonna (1.15.0): 760px bastano per tre card da ~220px, sotto si impilano */
+  max-width: max(var(--hub-auth-card-width), 760px);
 }
 
 .hub-auth__note {
@@ -820,6 +821,50 @@
   font-size: 0.875rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+/* Piani in colonne (dalla 1.15.0): una card per piano con descrizione, listino, mensile e annuale */
+.hub-auth__plans {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.hub-auth__option--plan {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.hub-auth__option--plan input {
+  align-self: flex-start;
+}
+
+.hub-auth__option--plan .hub-auth__option-body {
+  gap: 4px;
+}
+
+.hub-auth__option--plan .hub-auth__option-price {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  white-space: normal;
+}
+
+.hub-auth__option-desc {
+  color: var(--hub-auth-muted);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.hub-auth__option-list {
+  color: var(--hub-auth-muted);
+  font-size: 0.8125rem;
+}
+
+.hub-auth__option-price-main {
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .hub-auth__summary {
