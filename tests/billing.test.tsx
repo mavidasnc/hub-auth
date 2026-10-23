@@ -505,6 +505,130 @@ describe('SubscribePicker', () => {
   });
 });
 
+/** Listino della prima fase dei pagamenti (hub >= 0.269.0): solo piani, con descrizione, app incluse */
+const CATALOG_FASE_1: BillingCatalog = {
+  ...CATALOG,
+  plans: [
+    { code: 'starter', label: 'Starter', description: 'Per iniziare con calma.', monthly_cents: 1200,
+      list_monthly_cents: 1500, launch_monthly_cents: 1200, app_discount_pct: 0, sites_max: 10 },
+    { code: 'pro', label: 'Pro', description: 'Per chi lavora ogni giorno.', monthly_cents: 2400,
+      list_monthly_cents: 3000, launch_monthly_cents: 2400, app_discount_pct: 20, sites_max: 25 },
+    { code: 'agency', label: 'Agency', description: null, monthly_cents: 4020,
+      list_monthly_cents: 5025, launch_monthly_cents: 4020, app_discount_pct: 33, sites_max: null },
+  ],
+  apps: [],
+  app_tiers: [],
+  apps_included_months: 3,
+};
+
+describe('SubscribePicker: solo piani Fleet (1.15.0)', () => {
+  function monta(catalog: BillingCatalog = CATALOG_FASE_1) {
+    const onQuote = vi.fn(async () => QUOTE);
+    const onSubmit = vi.fn(async () => undefined);
+    const { container, unmount } = render(<SubscribePicker catalog={catalog} onQuote={onQuote} onSubmit={onSubmit} />);
+    return { onQuote, onSubmit, container, unmount };
+  }
+
+  it('mostra i tre piani in colonne, uno per radio', async () => {
+    const { container } = monta();
+
+    const colonne = container.querySelectorAll('.hub-auth__plans > .hub-auth__option--plan');
+    expect(colonne).toHaveLength(3);
+    expect(container.querySelectorAll('input[name="hub-auth-plan"]')).toHaveLength(3);
+    await waitFor(() => expect(screen.getByText('IVA 22%')).toBeTruthy());
+  });
+
+  it('per ogni piano: descrizione, listino barrato, mensile di lancio e annuale di lancio', () => {
+    monta();
+
+    expect(screen.getByText('Per iniziare con calma.')).toBeTruthy();
+    expect(screen.getByText('Per chi lavora ogni giorno.')).toBeTruthy();
+    // Listino barrato solo con il prezzo di lancio in vigore
+    const listino = screen.getByText(/Listino 15,00/);
+    expect(listino.tagName).toBe('S');
+    expect(screen.getByText(/12,00.*al mese/)).toBeTruthy();
+    // Annuale = mensile x 12: 12 x 12 = 144, 24 x 12 = 288, 40,20 x 12 = 482,40
+    expect(screen.getByText(/144,00.*all'anno/)).toBeTruthy();
+    expect(screen.getByText(/288,00.*all'anno/)).toBeTruthy();
+    expect(screen.getByText(/482,40.*all'anno/)).toBeTruthy();
+  });
+
+  it('senza descrizione la card non mostra un testo vuoto', () => {
+    const { container } = monta();
+
+    expect(container.querySelectorAll('.hub-auth__option-desc')).toHaveLength(2);
+  });
+
+  it('dopo il lancio vale il listino e non c\'è il prezzo barrato', () => {
+    const dopo: BillingCatalog = {
+      ...CATALOG_FASE_1,
+      price_basis: 'list',
+      plans: CATALOG_FASE_1.plans.map((p) => ({ ...p, monthly_cents: p.list_monthly_cents })),
+    };
+    const { container } = monta(dopo);
+
+    expect(container.querySelectorAll('.hub-auth__option-list')).toHaveLength(0);
+    expect(screen.getByText(/15,00.*al mese/)).toBeTruthy();
+  });
+
+  it('niente opzione "solo app" né elenco app', () => {
+    monta();
+
+    expect(screen.queryByLabelText('Solo le app, senza Fleet')).toBeNull();
+    expect(screen.queryByText('App')).toBeNull();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+  });
+
+  it('dice per quanti mesi sono incluse le app', () => {
+    monta();
+    expect(screen.getByText('Con un piano Fleet le app Mavida sono incluse per 3 mesi.')).toBeTruthy();
+  });
+
+  it('un mese solo al singolare, nessuna riga con 0 mesi o senza il campo', () => {
+    const { unmount } = monta({ ...CATALOG_FASE_1, apps_included_months: 1 });
+    expect(screen.getByText('Con un piano Fleet le app Mavida sono incluse per 1 mese.')).toBeTruthy();
+    unmount();
+
+    const { unmount: unmount2 } = monta({ ...CATALOG_FASE_1, apps_included_months: 0 });
+    expect(screen.queryByText(/sono incluse per/)).toBeNull();
+    unmount2();
+
+    const { apps_included_months: _omesso, ...senzaCampo } = CATALOG_FASE_1;
+    monta(senzaCampo);
+    expect(screen.queryByText(/sono incluse per/)).toBeNull();
+  });
+
+  it('chiede il prezzo del solo piano scelto, senza app', async () => {
+    const { onQuote } = monta();
+
+    await waitFor(() => expect(onQuote).toHaveBeenCalledWith({ fleet_plan: 'starter', apps: [] }));
+    fireEvent.click(screen.getByLabelText(/Agency/));
+    await waitFor(() => expect(onQuote).toHaveBeenLastCalledWith({ fleet_plan: 'agency', apps: [] }));
+  });
+
+  it('senza piani il messaggio chiede un piano, non un\'app', () => {
+    monta({ ...CATALOG_FASE_1, plans: [] });
+
+    expect(screen.getByText('Scegli un piano.')).toBeTruthy();
+    expect(screen.queryByText("Scegli un piano o almeno un'app.")).toBeNull();
+  });
+
+  it('invia solo il piano scelto e i dati di fatturazione', async () => {
+    const { onSubmit } = monta();
+    await waitFor(() => expect(screen.getByText('IVA 22%')).toBeTruthy());
+
+    fireEvent.change(screen.getByLabelText('Ragione sociale o nome e cognome'), { target: { value: 'Rossi Srl' } });
+    fireEvent.change(screen.getByLabelText('Partita IVA'), { target: { value: 'IT01234567890' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Paga con PayPal' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit).toHaveBeenCalledWith({
+      fleet_plan: 'starter', apps: [], billing_name: 'Rossi Srl',
+      vat_number: 'IT01234567890', billing_country: 'IT',
+    });
+  });
+});
+
 describe('LoginScreen allo step subscribe', () => {
   async function conStepSubscribe(catalog: () => Response) {
     const ctx = creaClient({

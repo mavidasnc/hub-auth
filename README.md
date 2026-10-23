@@ -188,6 +188,7 @@ Con i pagamenti accesi su hub (spunta «Abilitazione pagamenti» nella scheda Pa
 - **Flusso**: `verifyOtp` / `verifyLink` / SSO → 403 con `details.billing_token` → step `subscribe` → `loadBillingCatalog()` → `billingQuote()` a ogni scelta (gli importi li calcola sempre hub) → `startCheckout()` (redirect a PayPal, token in `sessionStorage`) → ritorno con `?billing=paid` → `POST /billing/complete` → sessione.
 - **Esiti del ritorno** (`?billing=` letto e tolto dall'URL): `paid` con token salvato = accesso; `paid` senza token = notice `payment_received`; `cancelled` = si riapre la scelta; `pending` = `payment_pending`; `error` = `payment_failed`.
 - **Abbonamento scaduto durante l'uso**: `/me`, `authFetch` e gli interceptor axios riconoscono `403 SubscriptionRequired` e fanno uscire con la notice `subscription_required`.
+- **Piani in tre colonne (1.15.0, descrizioni e app incluse da hub ≥ 0.269.0)**: ogni piano mostra descrizione, listino barrato, mensile e annuale (mensile × `months`); con `catalog.apps` vuoto non compaiono né «solo app» né l'elenco app, e `apps_included_months` aggiunge la riga sulle app incluse.
 - **Anteprima** (dashboard admin): `SubscribePicker` non dipende dal client; con `preview` e senza `onSubmit` mostra la pagina di pagamento con prezzi reali senza permettere di comprare.
 
 ```tsx

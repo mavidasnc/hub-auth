@@ -66,6 +66,9 @@ export interface HubAuthMessages {
     subscribeNoFleet: string;
     subscribeSites: string;
     subscribePerMonth: string;
+    subscribePerYearPrice: string;
+    subscribeListPrice: string;
+    subscribeAppsIncluded: string;
     subscribeApps: string;
     subscribeLaunch: string;
     subscribeSummary: string;
@@ -74,6 +77,7 @@ export interface HubAuthMessages {
     subscribeTotal: string;
     subscribePerYear: string;
     subscribeNeedSelection: string;
+    subscribeNeedPlan: string;
     subscribeBilling: string;
     billingNameLabel: string;
     vatNumberLabel: string;

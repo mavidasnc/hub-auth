@@ -7,7 +7,12 @@
  * `onSubmit` per vedere la pagina di pagamento senza poter comprare nulla.
  *
  * Gli importi non si calcolano qui: ogni cambio di scelta chiede il prezzo a hub
- * (`onQuote`), che lo calcola dal listino salvato nel database.
+ * (`onQuote`), che lo calcola dal listino salvato nel database. Fanno eccezione i soli
+ * importi di vetrina di ogni piano (mensile e annuale, mensile x `months`).
+ *
+ * Dalla 1.15.0 i piani sono tre colonne con descrizione, listino, mensile e annuale. Le app
+ * si scelgono (e c'è l'opzione "solo app") solo se il listino ne offre: con `apps` vuoto, come
+ * nella prima fase dei pagamenti, resta la scelta del piano e una riga sulle app incluse.
  */
 import type { BillingCatalog, BillingOrder, BillingQuote, BillingSelection } from '../core/index.js';
 import { type HubAuthMessages } from './messages.js';

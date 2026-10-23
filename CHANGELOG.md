@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.15.0 — 2026-10-23
+
+Pagina di pagamento in tre colonne, solo con i piani Fleet. Nessuna modifica che rompa l'API pubblica: un listino di hub < 0.269.0 (senza `description` né `apps_included_months`) si vede come prima, solo impaginato in colonne. **Le descrizioni e la riga sulle app incluse richiedono hub ≥ 0.269.0 (migration 172): rilasciare prima hub.**
+
+- **Piani in tre colonne** (`SubscribePicker`): una card per piano con titolo, descrizione (`BillingPlan.description`, nuova e opzionale), siti inclusi, listino barrato (solo con il prezzo di lancio in vigore), prezzo mensile e **prezzo annuale** (mensile × `months`). Sotto i ~190px per card si impilano. La card larga del login passa da 560 a 760px.
+- **Niente opzione «solo app» né elenco app quando il listino non ne offre** (`catalog.apps` vuoto, com'è dalla prima fase dei pagamenti di hub 0.269.0): restano la scelta del piano e il riepilogo. Con `apps` non vuoto il comportamento è quello della 1.14.0 (radio «Solo le app, senza Fleet», checkbox delle app).
+- **App incluse**: con `BillingCatalog.apps_included_months > 0` compare «Con un piano Fleet le app Mavida sono incluse per N mesi.» (singolare «1 mese»).
+- **Testi nuovi**: `subscribePerYearPrice`, `subscribeListPrice`, `subscribeAppsIncluded` (segnaposto `{period}`) e `subscribeNeedPlan` («Scegli un piano.», usato al posto di `subscribeNeedSelection` quando non ci sono app).
+- Nuovi campi opzionali nei tipi: `BillingPlan.description`, `BillingCatalog.apps_included_months`.
+- Test: 268 → 278 (`SubscribePicker: solo piani Fleet`: tre colonne, descrizione, listino barrato, annuale, niente app, mesi inclusi al singolare e a zero, preventivo senza app, invio).
+
 ## 1.14.0 — 2026-10-22
 
 Pagamento dell'abbonamento con PayPal dentro il login. Nessuna modifica che rompa l'API pubblica: con hub che non ha i pagamenti accesi (default) nulla cambia. **Richiede hub ≥ 0.267.0 (migration 171)**: rilasciare prima hub, poi le app. Le app ricevono il nuovo step aggiornando `@mavida/hub-auth` a `^1.14.0`.
