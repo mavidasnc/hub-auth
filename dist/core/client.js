@@ -738,6 +738,21 @@ export function createHubAuth(config) {
     function billingQuote(selection) {
         return billingRequest('billing/quote', 'POST', selection);
     }
+    async function suggestAddress(query, session) {
+        const params = new URLSearchParams({ q: query, session });
+        const data = await billingRequest(`billing/address/suggest?${params.toString()}`, 'GET');
+        return Array.isArray(data?.suggestions) ? data.suggestions : [];
+    }
+    async function addressDetails(placeId, session) {
+        const params = new URLSearchParams({ place_id: placeId, session });
+        const data = await billingRequest(`billing/address/details?${params.toString()}`, 'GET');
+        if (!data || data.unavailable || typeof data.address !== 'string')
+            return null;
+        return {
+            address: data.address, zip: data.zip ?? '', city: data.city ?? '',
+            province: data.province ?? '', country: data.country ?? 'IT',
+        };
+    }
     async function startCheckout(order) {
         set({ loading: true, notice: null });
         try {
@@ -1150,6 +1165,8 @@ export function createHubAuth(config) {
         loadBillingCatalog,
         billingQuote,
         startCheckout,
+        suggestAddress,
+        addressDetails,
         refresh,
         logout,
         forceLogout,

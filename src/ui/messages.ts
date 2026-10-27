@@ -98,6 +98,115 @@ export interface HubAuthMessages {
   billingUnavailable: string;
   paypalUnavailable: string;
   invalidSelection: string;
+  ckKicker: string;
+  ckHeroTitle: string;
+  ckHeroTitleAccent: string;
+  ckHeroLead: string;
+  ckHeroCta: string;
+  ckHeroFaq: string;
+  ckTrust1: string;
+  ckTrust2: string;
+  ckTrust3: string;
+  ckBenefit1Title: string;
+  ckBenefit1Text: string;
+  ckBenefit2Title: string;
+  ckBenefit2Text: string;
+  ckBenefit3Title: string;
+  ckBenefit3Text: string;
+  ckPlansKicker: string;
+  ckPlansTitle: string;
+  ckPlansNoteCompany: string;
+  ckPlansNotePrivate: string;
+  ckRecommended: string;
+  ckOrderKicker: string;
+  ckOrderTitle: string;
+  ckOrderLead: string;
+  ckWhoTitle: string;
+  ckWhoSub: string;
+  ckCompany: string;
+  ckCompanySub: string;
+  ckPrivate: string;
+  ckPrivateSub: string;
+  ckDataTitle: string;
+  ckDataSub: string;
+  ckCompanyName: string;
+  ckFirstName: string;
+  ckLastName: string;
+  ckVat: string;
+  ckVatHint: string;
+  ckTaxCode: string;
+  ckOptional: string;
+  ckAddressTitle: string;
+  ckAddressSub: string;
+  ckAddressSubManual: string;
+  ckAddress: string;
+  ckAddressPlaceholder: string;
+  ckZip: string;
+  ckCity: string;
+  ckProvince: string;
+  ckProvincePlaceholder: string;
+  ckAddressFilled: string;
+  ckSuggestions: string;
+  ckPoweredByGoogle: string;
+  ckInvoiceTitle: string;
+  ckInvoiceSub: string;
+  ckSdiNote: string;
+  ckConfirmTitle: string;
+  ckConfirmSub: string;
+  ckConsentTerms: string;
+  ckTermsLink: string;
+  ckPrivacyLink: string;
+  ckConsentBusiness: string;
+  ckConsentImmediate: string;
+  ckNoteCompany: string;
+  ckNotePrivate: string;
+  ckWithdrawLink: string;
+  ckErrRequired: string;
+  ckErrName: string;
+  ckErrVat: string;
+  ckErrTaxCode: string;
+  ckErrTaxCodePrivate: string;
+  ckErrAddress: string;
+  ckErrZip: string;
+  ckErrCity: string;
+  ckErrProvince: string;
+  ckErrSdi: string;
+  ckErrPec: string;
+  ckErrTerms: string;
+  ckErrBusiness: string;
+  ckErrImmediate: string;
+  ckOkVat: string;
+  ckOkTaxCode: string;
+  ckOkSdi: string;
+  ckOkPec: string;
+  ckErrorsOne: string;
+  ckErrorsMany: string;
+  ckConsentLabel: string;
+  ckSummaryPlan: string;
+  ckNetAnnual: string;
+  ckVatIncluded: string;
+  ckTotalAnnual: string;
+  ckTotalNote: string;
+  ckOrder: string;
+  ckAfterOrder: string;
+  ckSecure: string;
+  ckVatExcluded: string;
+  ckVatIncludedBasis: string;
+  ckFaqKicker: string;
+  ckFaqTitle: string;
+  ckFaq1Q: string;
+  ckFaq1A: string;
+  ckFaq2Q: string;
+  ckFaq2A: string;
+  ckFaq3Q: string;
+  ckFaq3A: string;
+  ckFaq4Q: string;
+  ckFaq4A: string;
+  ckFaq5Q: string;
+  ckFaq5A: string;
+  ckFaq6Q: string;
+  ckFaq6A: string;
+  ckFooterLegal: string;
   ecosystemTitle: string;
   ecosystemMenu: string;
   notice: Record<AuthNotice, string>;
@@ -184,13 +293,122 @@ export const defaultMessages: HubAuthMessages = {
   pecLabel: 'PEC',
   countryLabel: 'Paese (codice a due lettere)',
   fiscalRequired: 'Indica la partita IVA o il codice fiscale.',
-  subscribePay: 'Paga con PayPal',
+  subscribePay: 'Ordina con obbligo di pagamento',
   subscribePaying: 'Reindirizzamento a PayPal...',
   subscribePreview: 'Anteprima: il pagamento è disattivato.',
   billingDisabled: 'I pagamenti non sono attivi.',
   billingUnavailable: 'Il piano scelto non è ancora disponibile.',
   paypalUnavailable: 'PayPal non è raggiungibile in questo momento. Riprova.',
   invalidSelection: 'La scelta non è valida.',
+  ckKicker: 'Fleet · abbonamento annuale',
+  ckHeroTitle: 'Tutti i siti WordPress dei tuoi clienti sotto controllo,',
+  ckHeroTitleAccent: 'da un unico cruscotto',
+  ckHeroLead: 'Aggiornamenti, monitoraggio e credenziali custodite in un unico pannello. Scegli il piano, paghi una volta all’anno e le app Mavida sono incluse per 3 mesi.',
+  ckHeroCta: 'Scegli il piano',
+  ckHeroFaq: 'Domande frequenti',
+  ckTrust1: 'Pagamento sicuro con PayPal',
+  ckTrust2: 'Fattura elettronica',
+  ckTrust3: 'Un solo accesso per tutte le app',
+  ckBenefit1Title: 'Un solo accesso',
+  ckBenefit1Text: 'Lo stesso account per Fleet e per tutte le app Mavida: niente password da ricordare.',
+  ckBenefit2Title: 'Pagamento sicuro',
+  ckBenefit2Text: 'Paghi su PayPal: noi non vediamo e non conserviamo mai i dati della tua carta.',
+  ckBenefit3Title: 'Fattura elettronica',
+  ckBenefit3Text: 'La fattura arriva al tuo codice destinatario o alla PEC, oppure nel cassetto fiscale.',
+  ckPlansKicker: 'Piani',
+  ckPlansTitle: 'Scegli il tuo piano',
+  ckPlansNoteCompany: 'Prezzi al mese, IVA esclusa. Il pagamento è annuale anticipato.',
+  ckPlansNotePrivate: 'Prezzi al mese, IVA inclusa. Il pagamento è annuale anticipato.',
+  ckRecommended: 'Consigliato',
+  ckOrderKicker: 'Ordine',
+  ckOrderTitle: 'I tuoi dati di fatturazione',
+  ckOrderLead: 'Bastano pochi dati: li controlliamo mentre scrivi.',
+  ckWhoTitle: 'Chi paga',
+  ckWhoSub: 'La fattura sarà intestata a te o alla tua azienda.',
+  ckCompany: 'Azienda o professionista',
+  ckCompanySub: 'con partita IVA',
+  ckPrivate: 'Privato',
+  ckPrivateSub: 'con codice fiscale',
+  ckDataTitle: 'Dati di fatturazione',
+  ckDataSub: 'I campi con * sono obbligatori.',
+  ckCompanyName: 'Ragione sociale',
+  ckFirstName: 'Nome',
+  ckLastName: 'Cognome',
+  ckVat: 'Partita IVA',
+  ckVatHint: '11 cifre, con o senza IT davanti.',
+  ckTaxCode: 'Codice fiscale',
+  ckOptional: '(facoltativo)',
+  ckAddressTitle: 'Indirizzo di fatturazione',
+  ckAddressSub: 'Per ora la fatturazione è solo per l’Italia. Scrivi l’indirizzo e scegli un suggerimento: compiliamo CAP, città e provincia.',
+  ckAddressSubManual: 'Per ora la fatturazione è solo per l’Italia.',
+  ckAddress: 'Indirizzo',
+  ckAddressPlaceholder: 'Via, numero civico',
+  ckZip: 'CAP',
+  ckCity: 'Città',
+  ckProvince: 'Provincia',
+  ckProvincePlaceholder: 'Seleziona…',
+  ckAddressFilled: 'Indirizzo compilato: controlla CAP e città',
+  ckSuggestions: 'Suggerimenti di indirizzo',
+  ckPoweredByGoogle: 'powered by Google',
+  ckInvoiceTitle: 'Fattura elettronica',
+  ckInvoiceSub: 'Facoltativa: ci dice dove consegnare la fattura.',
+  ckSdiNote: 'Senza codice destinatario né PEC la fattura parte con il codice 0000000 e la trovi nel cassetto fiscale dell’Agenzia delle Entrate.',
+  ckConfirmTitle: 'Conferma l’ordine',
+  ckConfirmSub: 'Prima di pagare, due conferme.',
+  ckConsentTerms: 'Ho letto e accetto i {terms} e l’{privacy}.',
+  ckTermsLink: 'Termini di vendita',
+  ckPrivacyLink: 'Informativa sulla privacy',
+  ckConsentBusiness: 'Dichiaro di acquistare per scopi connessi alla mia attività imprenditoriale o professionale e prendo atto che non si applicano le tutele previste per i consumatori.',
+  ckConsentImmediate: 'Chiedo espressamente che il servizio inizi subito. So che, se recedo entro {days} giorni, pagherò la parte di servizio già usufruita.',
+  ckNoteCompany: 'Per i contratti con aziende e professionisti non si applica il diritto di recesso previsto per i consumatori. Dopo il pagamento ricevi la conferma d’ordine via email.',
+  ckNotePrivate: 'Come consumatore hai {days} giorni dall’inizio del servizio per recedere dal contratto senza dare spiegazioni, online dalla pagina {withdraw}. Ti mandiamo il link anche nell’email di conferma.',
+  ckWithdrawLink: 'Recedi dal contratto',
+  ckErrRequired: 'Campo obbligatorio',
+  ckErrName: 'Inserisci almeno 2 caratteri',
+  ckErrVat: 'Partita IVA non valida: servono 11 cifre e il controllo non torna',
+  ckErrTaxCode: 'Codice fiscale non valido: controlla i 16 caratteri (o le 11 cifre di una società)',
+  ckErrTaxCodePrivate: 'Per un privato serve il codice fiscale personale di 16 caratteri',
+  ckErrAddress: 'Indica via e numero civico',
+  ckErrZip: 'Il CAP ha 5 cifre',
+  ckErrCity: 'Inserisci la città',
+  ckErrProvince: 'Scegli la provincia',
+  ckErrSdi: 'Il codice destinatario ha 7 caratteri (lettere e cifre)',
+  ckErrPec: 'Indirizzo PEC non valido',
+  ckErrTerms: 'Per ordinare devi accettare i termini di vendita e la privacy',
+  ckErrBusiness: 'Conferma che l’acquisto è per scopi professionali',
+  ckErrImmediate: 'Conferma la richiesta di avvio immediato del servizio',
+  ckOkVat: 'Partita IVA valida',
+  ckOkTaxCode: 'Codice fiscale valido',
+  ckOkSdi: 'Codice destinatario valido',
+  ckOkPec: 'PEC valida',
+  ckErrorsOne: 'Controlla 1 punto prima di ordinare:',
+  ckErrorsMany: 'Controlla {count} punti prima di ordinare:',
+  ckConsentLabel: 'Consenso',
+  ckSummaryPlan: 'Prezzo di lancio',
+  ckNetAnnual: 'Imponibile annuale',
+  ckVatIncluded: 'di cui IVA {rate}%',
+  ckTotalAnnual: 'Totale annuale',
+  ckTotalNote: 'Il totale comprende l’IVA. Pagamento annuale anticipato.',
+  ckOrder: 'Ordina con obbligo di pagamento',
+  ckAfterOrder: 'Dopo l’ordine ti portiamo su PayPal per pagare.',
+  ckSecure: 'Pagamento sicuro: non vediamo mai i dati della tua carta.',
+  ckVatExcluded: 'IVA esclusa',
+  ckVatIncludedBasis: 'IVA inclusa',
+  ckFaqKicker: 'FAQ',
+  ckFaqTitle: 'Domande frequenti',
+  ckFaq1Q: 'I prezzi comprendono l’IVA?',
+  ckFaq1A: 'Se acquisti come azienda o professionista i prezzi dei piani sono IVA esclusa: nel riepilogo vedi imponibile, IVA e totale. Se acquisti come privato i prezzi che vedi comprendono già l’IVA.',
+  ckFaq2Q: 'Posso recedere dal contratto?',
+  ckFaq2A: 'Se acquisti come privato hai {days} giorni dall’inizio del servizio per recedere, online dalla pagina «Recedi dal contratto». Se hai chiesto di iniziare subito, ti restituiamo il prezzo meno la parte già usufruita. Per aziende e professionisti il diritto di recesso previsto per i consumatori non si applica.',
+  ckFaq3Q: 'Come ricevo la fattura?',
+  ckFaq3A: 'La fattura è elettronica: la inviamo al codice destinatario o alla PEC che indichi. Se non ne hai, la trovi nel cassetto fiscale dell’Agenzia delle Entrate.',
+  ckFaq4Q: 'Cosa sono le app incluse?',
+  ckFaq4A: 'Con un piano Fleet ricevi le app Mavida (VoiceNote, Wandly, Slide-orama, Social Planner, WooSync) incluse per un periodo, senza costi in più.',
+  ckFaq5Q: 'Cosa succede dopo il pagamento?',
+  ckFaq5A: 'Il tuo abbonamento si attiva subito e ricevi via email la conferma d’ordine, con i dati del contratto e, per i privati, il link per recedere.',
+  ckFaq6Q: 'Come pago?',
+  ckFaq6A: 'Con PayPal, in modo sicuro: puoi usare il tuo saldo o una carta. Il pagamento è annuale e anticipato.',
+  ckFooterLegal: 'Informazioni legali',
   ecosystemTitle: 'Le altre app Mavida',
   ecosystemMenu: 'App Mavida',
   notice: {

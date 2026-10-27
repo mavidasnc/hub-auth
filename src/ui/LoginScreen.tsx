@@ -192,13 +192,14 @@ export function LoginScreen({
 
   const tool = toolConfig?.tool;
   const hasAside = aside != null || !!(tool?.description || tool?.login_notice || asideImage || asideLink);
-  const split = layout === 'split' || (layout === 'auto' && hasAside);
+  // Lo step di pagamento (landing) occupa tutta la larghezza: niente pannello laterale
+  const split = step !== 'subscribe' && (layout === 'split' || (layout === 'auto' && hasAside));
   // Con il pannello di default il logo sta nel pannello (e si toglie dalla card sopra i 900px);
   // con un `aside` personalizzato resta nella card, che è l'unico posto dove l'app lo mette.
   const logoInAside = split && aside == null && !!logo;
 
   const card = (
-    <div className={`hub-auth__card${step === 'subscribe' ? ' hub-auth__card--wide' : ''}`}>
+    <div className={`hub-auth__card${step === 'subscribe' ? ' hub-auth__card--wide hub-auth__card--checkout' : ''}`}>
       {(logo || title || subtitle) && (
         <header className="hub-auth__header">
           {logo && <div className="hub-auth__logo">{logo}</div>}

@@ -211,6 +211,21 @@ const catalog = await loadBillingCatalog();
 - Testi: `subscribe*`, `billingNameLabel`, `vatNumberLabel`, `taxCodeLabel`, `sdiCodeLabel`, `pecLabel`, `countryLabel`, `fiscalRequired`, `billingDisabled`, `billingUnavailable`, `paypalUnavailable`, `invalidSelection` e le notice `subscription_required`, `payment_received`, `payment_pending`, `payment_failed`.
 - Rilasciare **prima hub** (migration 171), poi le app con `@mavida/hub-auth` ≥ 1.14.0: un'app più vecchia, a pagamenti accesi, mostrerebbe l'errore del 403 invece del pagamento.
 
+## Pagina di pagamento per aziende e privati (1.17.0, hub ≥ 0.272.0)
+
+`SubscribePicker` (e quindi lo step `subscribe` del login) è una landing in stile Mavida: scelta del piano, tipo di cliente (azienda o privato), dati di fatturazione con controlli (`core/fiscal.ts`), indirizzo con suggerimenti (hub fa da proxy verso Google Places), consensi di legge e pulsante «Ordina con obbligo di pagamento» sempre attivo (gli errori compaiono al clic). Alle aziende il prezzo si mostra IVA esclusa, ai privati IVA inclusa.
+
+```tsx
+<SubscribePicker catalog={catalog} onQuote={billingQuote} onSubmit={startCheckout}
+  onSuggestAddress={suggestAddress} onAddressDetails={addressDetails}
+  landing /* false = solo piani e ordine, senza presentazione e FAQ */ />
+```
+
+- Il tema è sempre scuro (acquamarina `#3bdda5` su `#0b0b1e`); si cambia con le variabili `--hub-auth-ck-bg`, `-surface`, `-text`, `-muted`, `-accent`, `-accent-ink`, `-radius`, `-font-display`, `-font-body`, `-font-mono`. I font Archivo, Inter e JetBrains Mono si usano se l'app li carica (le CSP delle app ammettono solo font `'self'`), altrimenti ripiegano sui font di sistema.
+- `BillingOrder` ha campi nuovi obbligatori (`billing_type`, indirizzo, `terms_accepted`, più `business_declaration` per l'azienda o `immediate_start_requested` per il privato). Un 400 di hub arriva con `HubAuthError.fieldErrors` (`[{field, message}]`).
+- Dati legali (link ai termini e alla privacy, dati del venditore) e `address_autocomplete` arrivano da `GET /billing/catalog` (`legal`): si impostano in dashboard-admin, Pagamenti > Impostazioni.
+- Rilasciare **prima hub 0.272.0** (migration 175), poi le app con `@mavida/hub-auth` ≥ 1.17.0.
+
 ## Layout a due metà (1.3.0)
 
 Quando c'è qualcosa da mostrare, la schermata si divide: **pannello a sinistra** (descrizione, avvisi o altro), **login a destra**. Sotto i 900px il login passa sopra e il pannello sotto. Il contenuto del pannello arriva in due modi:

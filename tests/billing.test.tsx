@@ -7,9 +7,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHubAuth, HubAuthError, memoryStorageAdapter } from '../src/core/index.js';
-import type { BillingCatalog, BillingQuote } from '../src/core/index.js';
+import type { BillingCatalog, BillingOrder, BillingQuote } from '../src/core/index.js';
 import { HubAuthProvider } from '../src/react/index.js';
-import { LoginScreen, SubscribePicker } from '../src/ui/index.js';
+import { LoginScreen } from '../src/ui/index.js';
 
 const BASE = 'https://hub.test/v1/';
 const KEY = 'billing-test';
@@ -31,6 +31,13 @@ const CATALOG: BillingCatalog = {
   apps: [{ key: 'voicenote', label: 'VoiceNote' }, { key: 'wandly', label: 'Wandly' }],
   app_tiers: [{ count: 1, base_monthly_cents: 350 }],
   no_fleet_markup_pct: 120,
+};
+
+/** Ordine di un'azienda nel formato di hub >= 0.272.0 */
+const ORDER: BillingOrder = {
+  fleet_plan: 'pro', apps: [], billing_type: 'company', billing_name: 'Rossi Srl', vat_number: '12345678903',
+  billing_address: 'Via Roma 1', billing_zip: '20121', billing_city: 'Milano', billing_province: 'MI',
+  billing_country: 'IT', terms_accepted: true, business_declaration: true,
 };
 
 const QUOTE: BillingQuote = {
@@ -238,11 +245,14 @@ describe('rotte /billing con il token di pagamento', () => {
       'billing/orders': () => json(201, { approve_url: 'https://www.paypal.com/checkoutnow?token=ORD1', subscription_id: 's1' }),
     });
 
-    await client.startCheckout({ fleet_plan: 'pro', apps: [], billing_name: 'Rossi Srl', vat_number: 'IT01234567890' });
+    await client.startCheckout(ORDER);
 
     const [, init] = chiamate(fetch, 'billing/orders')[0];
     expect(headerOf(init, 'X-Billing-Token')).toBe('TOK1');
-    expect(JSON.parse(String(init?.body))).toMatchObject({ fleet_plan: 'pro', tool: 'fleet', billing_name: 'Rossi Srl' });
+    expect(JSON.parse(String(init?.body))).toMatchObject({
+      fleet_plan: 'pro', tool: 'fleet', billing_name: 'Rossi Srl', billing_type: 'company', terms_accepted: true,
+      billing_zip: '20121',
+    });
     expect(redirect).toHaveBeenCalledWith('https://www.paypal.com/checkoutnow?token=ORD1');
     expect(window.sessionStorage.getItem(BILLING_KEY)).toBe('TOK1');
     expect(client.getState().loading).toBe(false);
@@ -253,7 +263,7 @@ describe('rotte /billing con il token di pagamento', () => {
       'billing/orders': () => json(201, { approve_url: 'http://evil.test/paga' }),
     });
 
-    await expect(client.startCheckout({ fleet_plan: 'pro', apps: [], billing_name: 'Rossi', tax_code: 'RSSMRA80A01H501U' }))
+    await expect(client.startCheckout(ORDER))
       .rejects.toMatchObject({ code: 'InvalidResponse' });
     expect(redirect).not.toHaveBeenCalled();
   });
@@ -263,16 +273,68 @@ describe('rotte /billing con il token di pagamento', () => {
       'billing/orders': () => json(409, { error: 'BillingDisabled', message: 'No' }),
     });
 
-    await expect(client.startCheckout({ fleet_plan: 'pro', apps: [], billing_name: 'Rossi', tax_code: 'X' }))
+    await expect(client.startCheckout(ORDER))
       .rejects.toMatchObject({ code: 'BillingDisabled' });
     expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it('startCheckout: gli errori di campo di hub arrivano con il campo e senza «Value error»', async () => {
+    const { client } = await inSubscribe({
+      'billing/orders': () => json(400, {
+        error: 'ValidationError',
+        detail: [
+          { type: 'value_error', loc: ['vat_number'], msg: 'Value error, Partita IVA non valida' },
+          { type: 'value_error', loc: ['billing_zip'], msg: 'CAP non valido: cinque cifre' },
+        ],
+      }),
+    });
+
+    const err = await client.startCheckout(ORDER).then(() => null, (e: unknown) => e);
+
+    expect(err).toMatchObject({ status: 400, code: 'ValidationError' });
+    expect((err as { fieldErrors: unknown }).fieldErrors).toEqual([
+      { field: 'vat_number', message: 'Partita IVA non valida' },
+      { field: 'billing_zip', message: 'CAP non valido: cinque cifre' },
+    ]);
+  });
+
+  it('suggestAddress: GET con ricerca e sessione, X-Billing-Token, lista dei suggerimenti', async () => {
+    const { client, fetch } = await inSubscribe({
+      'billing/address/suggest': () => json(200, { suggestions: [{ place_id: 'p1', text: 'Via Roma 1, Milano' }] }),
+    });
+
+    await expect(client.suggestAddress('via roma', 'sessione-1')).resolves.toEqual([{ place_id: 'p1', text: 'Via Roma 1, Milano' }]);
+
+    const [input, init] = chiamate(fetch, 'billing/address/suggest')[0];
+    expect(String(input)).toContain('q=via+roma');
+    expect(String(input)).toContain('session=sessione-1');
+    expect(headerOf(init, 'X-Billing-Token')).toBe('TOK1');
+  });
+
+  it('suggestAddress: servizio non disponibile = lista vuota', async () => {
+    const { client } = await inSubscribe({
+      'billing/address/suggest': () => json(200, { suggestions: [], unavailable: true }),
+    });
+    await expect(client.suggestAddress('via roma', 'sessione-1')).resolves.toEqual([]);
+  });
+
+  it('addressDetails: indirizzo pronto per il modulo, oppure null se il servizio non c\'è', async () => {
+    let risposta: unknown = { address: 'Via Roma 1', zip: '20121', city: 'Milano', province: 'MI', country: 'IT' };
+    const { client, fetch } = await inSubscribe({ 'billing/address/details': () => json(200, risposta) });
+
+    await expect(client.addressDetails('p1', 'sessione-1')).resolves.toEqual(
+      { address: 'Via Roma 1', zip: '20121', city: 'Milano', province: 'MI', country: 'IT' });
+    expect(String(chiamate(fetch, 'billing/address/details')[0][0])).toContain('place_id=p1');
+
+    risposta = { unavailable: true };
+    await expect(client.addressDetails('p1', 'sessione-1')).resolves.toBeNull();
   });
 
   it('resetToEmail dimentica il token di pagamento', async () => {
     const { client } = await inSubscribe({
       'billing/orders': () => json(201, { approve_url: 'https://www.paypal.com/x' }),
     });
-    await client.startCheckout({ fleet_plan: 'pro', apps: [], billing_name: 'Rossi', tax_code: 'X' });
+    await client.startCheckout(ORDER);
     expect(window.sessionStorage.getItem(BILLING_KEY)).toBe('TOK1');
 
     client.resetToEmail();
@@ -387,248 +449,6 @@ describe('ritorno da PayPal', () => {
   });
 });
 
-describe('SubscribePicker', () => {
-  function monta(props: Partial<React.ComponentProps<typeof SubscribePicker>> = {}) {
-    const onQuote = vi.fn(async () => QUOTE);
-    const onSubmit = vi.fn(async () => undefined);
-    render(<SubscribePicker catalog={CATALOG} onQuote={onQuote} onSubmit={onSubmit} {...props} />);
-    return { onQuote, onSubmit };
-  }
-
-  it('mostra piani con siti e prezzo mensile, app e riepilogo con IVA dal server', async () => {
-    const { onQuote } = monta();
-
-    expect(screen.getByText('Starter')).toBeTruthy();
-    expect(screen.getByText('fino a 25 siti')).toBeTruthy();
-    expect(screen.getByLabelText('VoiceNote')).toBeTruthy();
-    await waitFor(() => expect(screen.getByText('IVA 22%')).toBeTruthy());
-    // Si parte dal primo piano, il prezzo lo chiede a hub
-    expect(onQuote).toHaveBeenCalledWith({ fleet_plan: 'starter', apps: [] });
-    expect(screen.getByText(/175,68/)).toBeTruthy();
-    expect(screen.getByText(/Prezzo di lancio valido fino al 31\/12\/2026/)).toBeTruthy();
-  });
-
-  it('cambiando piano e app chiede un nuovo prezzo', async () => {
-    const { onQuote } = monta();
-    await waitFor(() => expect(onQuote).toHaveBeenCalledTimes(1));
-
-    fireEvent.click(screen.getByLabelText(/Pro/));
-    fireEvent.click(screen.getByLabelText('Wandly'));
-
-    await waitFor(() => expect(onQuote).toHaveBeenLastCalledWith({ fleet_plan: 'pro', apps: ['wandly'] }));
-  });
-
-  it('"solo app" manda fleet_plan null', async () => {
-    const { onQuote } = monta();
-    fireEvent.click(screen.getByLabelText('Solo le app, senza Fleet'));
-    fireEvent.click(screen.getByLabelText('VoiceNote'));
-
-    await waitFor(() => expect(onQuote).toHaveBeenLastCalledWith({ fleet_plan: null, apps: ['voicenote'] }));
-  });
-
-  it('senza piano né app non chiede il prezzo e il pagamento è disattivato', async () => {
-    const { onQuote } = monta();
-    await waitFor(() => expect(onQuote).toHaveBeenCalledTimes(1));
-    onQuote.mockClear();
-
-    fireEvent.click(screen.getByLabelText('Solo le app, senza Fleet'));
-
-    expect(onQuote).not.toHaveBeenCalled();
-    expect((screen.getByRole('button', { name: 'Paga con PayPal' }) as HTMLButtonElement).disabled).toBe(true);
-  });
-
-  it('chiede i dati fiscali prima di inviare', async () => {
-    const { onSubmit } = monta();
-    await waitFor(() => expect(screen.getByText('IVA 22%')).toBeTruthy());
-
-    fireEvent.change(screen.getByLabelText('Ragione sociale o nome e cognome'), { target: { value: 'Rossi Srl' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Paga con PayPal' }));
-
-    expect(await screen.findByRole('alert')).toHaveProperty('textContent', 'Indica la partita IVA o il codice fiscale.');
-    expect(onSubmit).not.toHaveBeenCalled();
-  });
-
-  it('invia scelta e dati di fatturazione', async () => {
-    const { onSubmit } = monta();
-    await waitFor(() => expect(screen.getByText('IVA 22%')).toBeTruthy());
-
-    fireEvent.change(screen.getByLabelText('Ragione sociale o nome e cognome'), { target: { value: ' Rossi Srl ' } });
-    fireEvent.change(screen.getByLabelText('Partita IVA'), { target: { value: 'IT01234567890' } });
-    fireEvent.click(screen.getByLabelText('VoiceNote'));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Paga con PayPal' })).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: 'Paga con PayPal' }));
-
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
-    expect(onSubmit).toHaveBeenCalledWith({
-      fleet_plan: 'starter', apps: ['voicenote'], billing_name: 'Rossi Srl',
-      vat_number: 'IT01234567890', billing_country: 'IT',
-    });
-  });
-
-  it('mostra l\'errore di hub in italiano', async () => {
-    const onSubmit = vi.fn(async () => { throw new HubAuthError('x', 409, 'BillingDisabled'); });
-    monta({ onSubmit });
-    await waitFor(() => expect(screen.getByText('IVA 22%')).toBeTruthy());
-    fireEvent.change(screen.getByLabelText('Ragione sociale o nome e cognome'), { target: { value: 'Rossi Srl' } });
-    fireEvent.change(screen.getByLabelText('Codice fiscale'), { target: { value: 'RSSMRA80A01H501U' } });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Paga con PayPal' }));
-
-    expect(await screen.findByText('I pagamenti non sono attivi.')).toBeTruthy();
-  });
-
-  it('anteprima: pagamento disattivato e avviso, anche con tutto compilato', async () => {
-    const { onSubmit } = monta({ preview: true });
-    await waitFor(() => expect(screen.getByText('IVA 22%')).toBeTruthy());
-
-    expect(screen.getByText('Anteprima: il pagamento è disattivato.')).toBeTruthy();
-    expect((screen.getByRole('button', { name: 'Paga con PayPal' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(onSubmit).not.toHaveBeenCalled();
-  });
-
-  it('senza onSubmit il pagamento è disattivato', async () => {
-    monta({ onSubmit: undefined });
-    await waitFor(() => expect(screen.getByText('IVA 22%')).toBeTruthy());
-    expect((screen.getByRole('button', { name: 'Paga con PayPal' }) as HTMLButtonElement).disabled).toBe(true);
-  });
-
-  it('funziona senza Provider (serve all\'anteprima della dashboard admin)', async () => {
-    expect(() => monta()).not.toThrow();
-  });
-
-  it('un errore del preventivo lascia il riepilogo vuoto', async () => {
-    const onQuote = vi.fn(async () => { throw new HubAuthError('x', 400, 'InvalidSelection'); });
-    monta({ onQuote });
-    await waitFor(() => expect(onQuote).toHaveBeenCalled());
-    expect(screen.queryByText('IVA 22%')).toBeNull();
-    expect((screen.getByRole('button', { name: 'Paga con PayPal' }) as HTMLButtonElement).disabled).toBe(true);
-  });
-});
-
-/** Listino della prima fase dei pagamenti (hub >= 0.269.0): solo piani, con descrizione, app incluse */
-const CATALOG_FASE_1: BillingCatalog = {
-  ...CATALOG,
-  plans: [
-    { code: 'starter', label: 'Starter', description: 'Per iniziare con calma.', monthly_cents: 1200,
-      list_monthly_cents: 1500, launch_monthly_cents: 1200, app_discount_pct: 0, sites_max: 10 },
-    { code: 'pro', label: 'Pro', description: 'Per chi lavora ogni giorno.', monthly_cents: 2400,
-      list_monthly_cents: 3000, launch_monthly_cents: 2400, app_discount_pct: 20, sites_max: 25 },
-    { code: 'agency', label: 'Agency', description: null, monthly_cents: 4020,
-      list_monthly_cents: 5025, launch_monthly_cents: 4020, app_discount_pct: 33, sites_max: null },
-  ],
-  apps: [],
-  app_tiers: [],
-  apps_included_months: 3,
-};
-
-describe('SubscribePicker: solo piani Fleet (1.15.0)', () => {
-  function monta(catalog: BillingCatalog = CATALOG_FASE_1) {
-    const onQuote = vi.fn(async () => QUOTE);
-    const onSubmit = vi.fn(async () => undefined);
-    const { container, unmount } = render(<SubscribePicker catalog={catalog} onQuote={onQuote} onSubmit={onSubmit} />);
-    return { onQuote, onSubmit, container, unmount };
-  }
-
-  it('mostra i tre piani in colonne, uno per radio', async () => {
-    const { container } = monta();
-
-    const colonne = container.querySelectorAll('.hub-auth__plans > .hub-auth__option--plan');
-    expect(colonne).toHaveLength(3);
-    expect(container.querySelectorAll('input[name="hub-auth-plan"]')).toHaveLength(3);
-    await waitFor(() => expect(screen.getByText('IVA 22%')).toBeTruthy());
-  });
-
-  it('per ogni piano: descrizione, listino barrato, mensile di lancio e annuale di lancio', () => {
-    monta();
-
-    expect(screen.getByText('Per iniziare con calma.')).toBeTruthy();
-    expect(screen.getByText('Per chi lavora ogni giorno.')).toBeTruthy();
-    // Listino barrato solo con il prezzo di lancio in vigore
-    const listino = screen.getByText(/Listino 15,00/);
-    expect(listino.tagName).toBe('S');
-    expect(screen.getByText(/12,00.*al mese/)).toBeTruthy();
-    // Annuale = mensile x 12: 12 x 12 = 144, 24 x 12 = 288, 40,20 x 12 = 482,40
-    expect(screen.getByText(/144,00.*all'anno/)).toBeTruthy();
-    expect(screen.getByText(/288,00.*all'anno/)).toBeTruthy();
-    expect(screen.getByText(/482,40.*all'anno/)).toBeTruthy();
-  });
-
-  it('senza descrizione la card non mostra un testo vuoto', () => {
-    const { container } = monta();
-
-    expect(container.querySelectorAll('.hub-auth__option-desc')).toHaveLength(2);
-  });
-
-  it('dopo il lancio vale il listino e non c\'è il prezzo barrato', () => {
-    const dopo: BillingCatalog = {
-      ...CATALOG_FASE_1,
-      price_basis: 'list',
-      plans: CATALOG_FASE_1.plans.map((p) => ({ ...p, monthly_cents: p.list_monthly_cents })),
-    };
-    const { container } = monta(dopo);
-
-    expect(container.querySelectorAll('.hub-auth__option-list')).toHaveLength(0);
-    expect(screen.getByText(/15,00.*al mese/)).toBeTruthy();
-  });
-
-  it('niente opzione "solo app" né elenco app', () => {
-    monta();
-
-    expect(screen.queryByLabelText('Solo le app, senza Fleet')).toBeNull();
-    expect(screen.queryByText('App')).toBeNull();
-    expect(screen.queryByRole('checkbox')).toBeNull();
-  });
-
-  it('dice per quanti mesi sono incluse le app', () => {
-    monta();
-    expect(screen.getByText('Con un piano Fleet le app Mavida sono incluse per 3 mesi.')).toBeTruthy();
-  });
-
-  it('un mese solo al singolare, nessuna riga con 0 mesi o senza il campo', () => {
-    const { unmount } = monta({ ...CATALOG_FASE_1, apps_included_months: 1 });
-    expect(screen.getByText('Con un piano Fleet le app Mavida sono incluse per 1 mese.')).toBeTruthy();
-    unmount();
-
-    const { unmount: unmount2 } = monta({ ...CATALOG_FASE_1, apps_included_months: 0 });
-    expect(screen.queryByText(/sono incluse per/)).toBeNull();
-    unmount2();
-
-    const { apps_included_months: _omesso, ...senzaCampo } = CATALOG_FASE_1;
-    monta(senzaCampo);
-    expect(screen.queryByText(/sono incluse per/)).toBeNull();
-  });
-
-  it('chiede il prezzo del solo piano scelto, senza app', async () => {
-    const { onQuote } = monta();
-
-    await waitFor(() => expect(onQuote).toHaveBeenCalledWith({ fleet_plan: 'starter', apps: [] }));
-    fireEvent.click(screen.getByLabelText(/Agency/));
-    await waitFor(() => expect(onQuote).toHaveBeenLastCalledWith({ fleet_plan: 'agency', apps: [] }));
-  });
-
-  it('senza piani il messaggio chiede un piano, non un\'app', () => {
-    monta({ ...CATALOG_FASE_1, plans: [] });
-
-    expect(screen.getByText('Scegli un piano.')).toBeTruthy();
-    expect(screen.queryByText("Scegli un piano o almeno un'app.")).toBeNull();
-  });
-
-  it('invia solo il piano scelto e i dati di fatturazione', async () => {
-    const { onSubmit } = monta();
-    await waitFor(() => expect(screen.getByText('IVA 22%')).toBeTruthy());
-
-    fireEvent.change(screen.getByLabelText('Ragione sociale o nome e cognome'), { target: { value: 'Rossi Srl' } });
-    fireEvent.change(screen.getByLabelText('Partita IVA'), { target: { value: 'IT01234567890' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Paga con PayPal' }));
-
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
-    expect(onSubmit).toHaveBeenCalledWith({
-      fleet_plan: 'starter', apps: [], billing_name: 'Rossi Srl',
-      vat_number: 'IT01234567890', billing_country: 'IT',
-    });
-  });
-});
-
 describe('LoginScreen allo step subscribe', () => {
   async function conStepSubscribe(catalog: () => Response) {
     const ctx = creaClient({
@@ -647,16 +467,16 @@ describe('LoginScreen allo step subscribe', () => {
   it('carica il listino e mostra il form di pagamento', async () => {
     await conStepSubscribe(() => json(200, CATALOG));
 
-    expect(await screen.findByText('Scegli il tuo abbonamento')).toBeTruthy();
+    expect(await screen.findByText('Scegli il tuo piano')).toBeTruthy();
     expect(await screen.findByText('IVA 22%')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Paga con PayPal' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Ordina con obbligo di pagamento' })).toBeTruthy();
   });
 
   it('con i pagamenti non attivi dice che non sono disponibili', async () => {
     await conStepSubscribe(() => json(200, { ...CATALOG, enabled: false }));
 
     expect(await screen.findByText(/pagamenti non sono al momento disponibili/i)).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Paga con PayPal' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ordina con obbligo di pagamento' })).toBeNull();
   });
 
   it('listino non caricabile: errore e si può tornare all\'accesso', async () => {

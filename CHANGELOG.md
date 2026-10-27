@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.17.0 — 2026-10-27
+
+Pagina di pagamento in stile Mavida per aziende e privati: tipo di cliente, controlli sui dati fiscali, indirizzo con suggerimenti, consensi di legge e pulsante «Ordina con obbligo di pagamento». **Richiede hub ≥ 0.272.0 (migration 175)** per ordinare: con un hub più vecchio il listino si vede ma `POST /billing/orders` rifiuta il nuovo corpo con 400. **Rompe il tipo `BillingOrder`** (nuovi campi obbligatori: `billing_type`, indirizzo e `terms_accepted`): chi chiama `startCheckout` a mano deve aggiornarlo; chi usa `LoginScreen` o `SubscribeStep` non cambia nulla.
+
+- **`SubscribePicker` ridisegnato come landing** (tema scuro con accento acquamarina, ripreso dal sito Mavida, sempre scuro anche dentro un'app chiara): presentazione, tre piani con il Pro «Consigliato», form a schede, riepilogo con pulsante, domande frequenti, dati del venditore e link legali in fondo. `landing={false}` toglie presentazione e domande frequenti. Layout con container query (serve sia a tutta pagina sia nella modale dell'anteprima admin); si personalizza con le variabili `--hub-auth-ck-*`; i font Archivo, Inter e JetBrains Mono si usano se l'app li carica, altrimenti ripiegano sui font di sistema.
+- **Tipo di cliente** (azienda o professionista, privato): campi diversi (ragione sociale e partita IVA, oppure nome, cognome e codice fiscale personale), SDI e PEC facoltativi con l'avviso del cassetto fiscale, prezzi **IVA esclusa per le aziende e IVA inclusa per i privati** (art. 49 del Codice del Consumo).
+- **Controlli sui dati** (`core/fiscal.ts`, stessi algoritmi di hub, esportati dal core): partita IVA con checksum, codice fiscale di persona (anche con omocodia) e di società, CAP, 107 province, SDI, PEC. Gli errori compaiono sotto il campo al blur e al clic.
+- **Pulsante sempre attivo**: a dati incompleti il clic mostra l'elenco degli errori con i collegamenti ai campi e porta il fuoco sul primo. Dopo un 400 di hub gli errori di campo (`HubAuthError.fieldErrors`, dal `detail` di pydantic) compaiono sotto il campo giusto.
+- **Consensi**: termini e privacy sempre (non preselezionati, con i link di `catalog.legal`), dichiarazione di scopi professionali per l'azienda, richiesta espressa di avvio immediato per il privato, con la nota sul recesso di 14 giorni e il link alla funzione di recesso.
+- **Indirizzo con suggerimenti** (`AddressAutocomplete`, combobox accessibile): ricerca ogni pausa di digitazione (250 ms) da 3 caratteri, tastiera (frecce, Invio, Esc), riempimento di CAP, città e provincia, token di sessione condiviso fra ricerca e dettagli, «powered by Google». Passa da hub (`GET /billing/address/*`): il browser non parla con Google. Senza servizio l'indirizzo si scrive a mano.
+- **Client**: `suggestAddress(query, session)` e `addressDetails(placeId, session)` (anche in `useHubAuth()`); nuovi tipi `BillingType`, `BillingLegal`, `AddressSuggestion`, `AddressDetails`, `FieldError`; `BillingCatalog.legal` e `address_autocomplete`; `HubAuthError.fieldErrors`.
+- **`LoginScreen`**: lo step di pagamento occupa tutta la larghezza, senza il pannello laterale (`hub-auth__card--checkout`).
+- **Testi nuovi** (prefisso `ck`, sovrascrivibili con `messages`); `subscribePay` diventa «Ordina con obbligo di pagamento».
+- Test: 287 → 327 (`fiscal.test.ts` con gli stessi vettori di hub; `subscribe-picker.test.tsx` al posto dei test del vecchio form: piani e prezzi per tipo, controlli, consensi, errori al clic e del server, indirizzo da mouse e tastiera, anteprima).
+
 ## 1.16.0 — 2026-10-27
 
 Checkbox «Ricordami» nel passo email del login: sessione di 30 giorni invece di 48 ore. Nessuna modifica che rompa l'API pubblica: `requestOtp(email)` funziona come prima e il corpo di `otp-request` cambia solo se la casella è spuntata. **Richiede hub ≥ 0.271.0 (migration 174): rilasciare prima hub**; con un hub più vecchio il campo `remember` è ignorato e la sessione resta di 48 ore (la casella però si vede lo stesso).

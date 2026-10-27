@@ -40,6 +40,8 @@ export function useHubAuth() {
         loadBillingCatalog: client.loadBillingCatalog,
         billingQuote: client.billingQuote,
         startCheckout: client.startCheckout,
+        suggestAddress: client.suggestAddress,
+        addressDetails: client.addressDetails,
         refresh: client.refresh,
         logout: client.logout,
     };

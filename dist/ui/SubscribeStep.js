@@ -5,7 +5,8 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
  * fa scegliere piano e app, raccoglie i dati di fatturazione e porta l'utente a PayPal; al
  * ritorno il client apre la sessione da solo.
  *
- * Il form vero e proprio è `SubscribePicker`, che non dipende dal client e si può montare
+ * Il form vero e proprio è `SubscribePicker` (dalla 1.17.0 una landing con tipo di cliente, dati
+ * fiscali, indirizzo con suggerimenti e consensi), che non dipende dal client e si può montare
  * anche altrove (anteprima dell'admin).
  */
 import { useEffect, useState } from 'react';
@@ -14,7 +15,7 @@ import { errorMessage, mergeMessages } from './messages.js';
 import { SubscribePicker } from './SubscribePicker.js';
 export function SubscribeStep({ messages: custom }) {
     const messages = mergeMessages(custom);
-    const { loadBillingCatalog, billingQuote, startCheckout, resetToEmail, loading } = useHubAuth();
+    const { loadBillingCatalog, billingQuote, startCheckout, suggestAddress, addressDetails, resetToEmail, loading, } = useHubAuth();
     const [catalog, setCatalog] = useState(null);
     const [error, setError] = useState('');
     useEffect(() => {
@@ -28,5 +29,5 @@ export function SubscribeStep({ messages: custom }) {
         // Il listino si carica una volta per apertura dello step
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [loadBillingCatalog]);
-    return (_jsxs("div", { className: "hub-auth__form", children: [!catalog && !error && _jsx("p", { className: "hub-auth__text", role: "status", children: messages.subscribeLoading }), error && _jsx("p", { className: "hub-auth__error", role: "alert", children: error || messages.subscribeUnavailable }), catalog && !catalog.enabled && (_jsx("p", { className: "hub-auth__error", role: "alert", children: messages.subscribeUnavailable })), catalog && catalog.enabled && (_jsx(SubscribePicker, { catalog: catalog, onQuote: billingQuote, onSubmit: startCheckout, busy: loading, messages: custom })), _jsx("div", { className: "hub-auth__links hub-auth__links--center", children: _jsx("button", { className: "hub-auth__link", type: "button", onClick: resetToEmail, disabled: loading, children: messages.backToLogin }) })] }));
+    return (_jsxs("div", { className: "hub-auth__form", children: [!catalog && !error && _jsx("p", { className: "hub-auth__text", role: "status", children: messages.subscribeLoading }), error && _jsx("p", { className: "hub-auth__error", role: "alert", children: error || messages.subscribeUnavailable }), catalog && !catalog.enabled && (_jsx("p", { className: "hub-auth__error", role: "alert", children: messages.subscribeUnavailable })), catalog && catalog.enabled && (_jsx(SubscribePicker, { catalog: catalog, onQuote: billingQuote, onSubmit: startCheckout, onSuggestAddress: suggestAddress, onAddressDetails: addressDetails, busy: loading, messages: custom })), _jsx("div", { className: "hub-auth__links hub-auth__links--center", children: _jsx("button", { className: "hub-auth__link", type: "button", onClick: resetToEmail, disabled: loading, children: messages.backToLogin }) })] }));
 }
