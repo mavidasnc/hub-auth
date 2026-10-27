@@ -50,6 +50,58 @@ describe('login OTP', () => {
     expect(auth.getState().otpRequestedAt).not.toBeNull();
   });
 
+  describe('«Ricordami» (1.16.0)', () => {
+    /** Corpo di ogni otp-request inviato, nell'ordine */
+    const otpBodies = (fetch: ReturnType<typeof fakeFetch>) => fetch.mock.calls
+      .filter(([url]) => String(url).endsWith('otp-request'))
+      .map(([, init]) => JSON.parse(String(init?.body)));
+
+    const nuovoClient = () => {
+      const fetch = fakeFetch({ 'POST otp-request': () => json(200, { success: true }) });
+      const auth = createHubAuth({ baseUrl: BASE, storageKey: 'k', storage: memoryStorageAdapter(), fetch });
+      return { fetch, auth };
+    };
+
+    it('con remember: true il corpo contiene remember', async () => {
+      const { fetch, auth } = nuovoClient();
+      await auth.requestOtp('mario@esempio.com', { remember: true });
+      expect(otpBodies(fetch)[0]).toEqual({ email: 'mario@esempio.com', link: true, remember: true });
+    });
+
+    it('con remember: false, o senza opzioni, il corpo è quello di prima', async () => {
+      const { fetch, auth } = nuovoClient();
+      await auth.requestOtp('mario@esempio.com', { remember: false });
+      auth.resetToEmail();
+      await auth.requestOtp('mario@esempio.com');
+      expect(otpBodies(fetch)).toEqual([
+        { email: 'mario@esempio.com', link: true },
+        { email: 'mario@esempio.com', link: true },
+      ]);
+    });
+
+    it('il reinvio al passo codice ripete la scelta', async () => {
+      const { fetch, auth } = nuovoClient();
+      await auth.requestOtp('mario@esempio.com', { remember: true });
+      await auth.requestOtp('mario@esempio.com'); // reinvio: stessa email, step 'otp'
+      expect(otpBodies(fetch)[1]).toMatchObject({ remember: true });
+    });
+
+    it('una nuova richiesta dopo "cambia email" non eredita la scelta', async () => {
+      const { fetch, auth } = nuovoClient();
+      await auth.requestOtp('mario@esempio.com', { remember: true });
+      auth.resetToEmail();
+      await auth.requestOtp('mario@esempio.com');
+      expect(otpBodies(fetch)[1]).not.toHaveProperty('remember');
+    });
+
+    it('con magicLink spento il corpo ha solo email e remember', async () => {
+      const fetch = fakeFetch({ 'POST otp-request': () => json(200, { success: true }) });
+      const auth = createHubAuth({ baseUrl: BASE, storageKey: 'k', storage: memoryStorageAdapter(), fetch, magicLink: false });
+      await auth.requestOtp('mario@esempio.com', { remember: true });
+      expect(otpBodies(fetch)[0]).toEqual({ email: 'mario@esempio.com', remember: true });
+    });
+  });
+
   it('requestOtp rifiuta un\'email non valida senza chiamare hub', async () => {
     const fetch = fakeFetch({});
     const auth = createHubAuth({ baseUrl: BASE, storageKey: 'k', storage: memoryStorageAdapter(), fetch });

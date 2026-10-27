@@ -293,8 +293,14 @@ export interface HubAuthClient {
   getToken(): string | null;
   /** URL assoluto di un percorso relativo alla base di hub (gli URL assoluti restano invariati) */
   url(path: string): string;
-  /** Richiede l'invio del codice OTP e passa allo step 'otp' (lancia HubAuthError) */
-  requestOtp(email: string): Promise<void>;
+  /**
+   * Richiede l'invio del codice OTP e passa allo step 'otp' (lancia HubAuthError).
+   *
+   * `remember` (dalla 1.16.0, richiede hub >= 0.271.0): «Ricordami», la sessione resta sliding a
+   * 30 giorni invece di 48 ore. Omesso vale `false`, tranne per il reinvio al passo codice (stessa
+   * email dello step 'otp'), che ripete la scelta dell'ultima richiesta.
+   */
+  requestOtp(email: string, options?: { remember?: boolean }): Promise<void>;
   /** Verifica il codice OTP e apre la sessione (lancia HubAuthError) */
   verifyOtp(code: string): Promise<void>;
   /**
@@ -585,6 +591,8 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
   const doFetch: typeof fetch = (...args) => (config.fetch ?? globalThis.fetch)(...args);
   // Il magic link è attivo di default; il token vive solo in memoria (mai nello stato osservabile)
   let linkToken: string | null = config.magicLink === false ? null : takeLinkFromUrl();
+  // «Ricordami» dell'ultima richiesta di codice: il reinvio la ripete (hub la salva sulla riga OTP)
+  let rememberChoice = false;
 
   // Pagamento: token di hub per le rotte /billing/* (30 minuti, solo in memoria e, durante il
   // viaggio su PayPal, in sessionStorage). Dopo il ritorno da PayPal l'esito arriva nella query.
@@ -919,15 +927,24 @@ export function createHubAuth(config: HubAuthConfig): HubAuthClient {
     set({ status: 'authenticated', offline: true });
   }
 
-  async function requestOtp(email: string): Promise<void> {
+  async function requestOtp(email: string, options?: { remember?: boolean }): Promise<void> {
     const normalized = email.trim().toLowerCase();
     if (!EMAIL_RE.test(normalized)) {
       throw new HubAuthError('Indirizzo email non valido.', 400, 'InvalidEmail');
     }
+    // Senza scelta esplicita solo il reinvio (stessa email, passo codice) ripete la precedente
+    const isResend = state.step === 'otp' && state.pendingEmail === normalized;
+    const remember = options?.remember ?? (isResend ? rememberChoice : false);
     set({ loading: true, notice: null });
     try {
-      // link: true = questo client sa gestire il magic link (hub lo include nell'email)
-      await publicPost('otp-request', config.magicLink === false ? { email: normalized } : { email: normalized, link: true });
+      // link: true = questo client sa gestire il magic link (hub lo include nell'email);
+      // remember: true solo se spuntato, così il body resta identico a prima senza «Ricordami»
+      await publicPost('otp-request', {
+        email: normalized,
+        ...(config.magicLink === false ? {} : { link: true }),
+        ...(remember ? { remember: true } : {}),
+      });
+      rememberChoice = remember;
       set({ step: 'otp', pendingEmail: normalized, otpRequestedAt: Date.now() });
       pollSsoWhileWaiting();
     } finally {

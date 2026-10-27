@@ -145,6 +145,73 @@ describe('LoginScreen', () => {
   });
 });
 
+describe('«Ricordami» nel passo email (1.16.0)', () => {
+  /** LoginScreen con una fetch che registra i corpi di otp-request */
+  function setupRemember() {
+    const bodies: Array<Record<string, unknown>> = [];
+    const fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input).replace(BASE, '');
+      if (path === 'otp-request') {
+        bodies.push(JSON.parse(String(init?.body)));
+        return json(200, { success: true });
+      }
+      throw new Error(`rotta non prevista: ${path}`);
+    });
+    const client = createHubAuth({ baseUrl: BASE, storageKey: 'k', storage: memoryStorageAdapter(), fetch });
+    render(
+      <HubAuthProvider client={client}>
+        <LoginScreen title="App" />
+      </HubAuthProvider>,
+    );
+    return { bodies };
+  }
+
+  const inviaCodice = async () => {
+    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'mario@esempio.com' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Invia codice' }));
+    });
+  };
+
+  it('la checkbox c\'è, è spenta di default e spiega i 30 giorni', async () => {
+    setupRemember();
+    const checkbox = await screen.findByRole('checkbox', { name: 'Ricordami' });
+    expect((checkbox as HTMLInputElement).checked).toBe(false);
+    expect(screen.getByText(/30 giorni/)).toBeTruthy();
+    // La nota descrive la casella (aria-describedby)
+    expect(checkbox.getAttribute('aria-describedby')).toBe(screen.getByText(/30 giorni/).id);
+  });
+
+  it('spuntata: otp-request porta remember: true', async () => {
+    const { bodies } = setupRemember();
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Ricordami' }));
+    await inviaCodice();
+    expect(bodies[0]).toMatchObject({ email: 'mario@esempio.com', remember: true });
+  });
+
+  it('non spuntata: otp-request senza remember', async () => {
+    const { bodies } = setupRemember();
+    await inviaCodice();
+    expect(bodies[0]).not.toHaveProperty('remember');
+  });
+
+  it('il reinvio del codice mantiene la scelta', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { bodies } = setupRemember();
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Ricordami' }));
+    await inviaCodice();
+    // Passato il cooldown di 60 s il pulsante "Reinvia codice" si abilita
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(61_000);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Reinvia codice' }));
+    });
+    expect(bodies).toHaveLength(2);
+    expect(bodies[1]).toMatchObject({ remember: true });
+  });
+});
+
 describe('AuthGate', () => {
   it('ruolo insufficiente: mostra denied', async () => {
     const storage = memoryStorageAdapter();

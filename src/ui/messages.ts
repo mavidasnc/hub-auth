@@ -16,6 +16,8 @@ export interface HubAuthMessages {
   sendCode: string;
   sending: string;
   codeHint: string;
+  rememberLabel: string;
+  rememberHint: string;
   codeSentTo: string;
   digitLabel: string;
   verify: string;
@@ -107,6 +109,8 @@ export const defaultMessages: HubAuthMessages = {
   sendCode: 'Invia codice',
   sending: 'Invio in corso...',
   codeHint: "Riceverai un codice di 6 cifre via email, valido per 10 minuti.",
+  rememberLabel: 'Ricordami',
+  rememberHint: 'Resterai connesso per i prossimi 30 giorni su questo dispositivo.',
   codeSentTo: 'Se {email} è registrato, riceverai un codice via email.',
   digitLabel: 'Cifra {index} del codice',
   verify: 'Verifica codice',
