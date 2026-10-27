@@ -233,6 +233,8 @@ export function createHubAuth(config) {
     const doFetch = (...args) => (config.fetch ?? globalThis.fetch)(...args);
     // Il magic link è attivo di default; il token vive solo in memoria (mai nello stato osservabile)
     let linkToken = config.magicLink === false ? null : takeLinkFromUrl();
+    // «Ricordami» dell'ultima richiesta di codice: il reinvio la ripete (hub la salva sulla riga OTP)
+    let rememberChoice = false;
     // Pagamento: token di hub per le rotte /billing/* (30 minuti, solo in memoria e, durante il
     // viaggio su PayPal, in sessionStorage). Dopo il ritorno da PayPal l'esito arriva nella query.
     const billingKey = `${config.storageKey}:billing`;
@@ -565,15 +567,24 @@ export function createHubAuth(config) {
         console.warn('[hub-auth] GET /me non disponibile:', error.message);
         set({ status: 'authenticated', offline: true });
     }
-    async function requestOtp(email) {
+    async function requestOtp(email, options) {
         const normalized = email.trim().toLowerCase();
         if (!EMAIL_RE.test(normalized)) {
             throw new HubAuthError('Indirizzo email non valido.', 400, 'InvalidEmail');
         }
+        // Senza scelta esplicita solo il reinvio (stessa email, passo codice) ripete la precedente
+        const isResend = state.step === 'otp' && state.pendingEmail === normalized;
+        const remember = options?.remember ?? (isResend ? rememberChoice : false);
         set({ loading: true, notice: null });
         try {
-            // link: true = questo client sa gestire il magic link (hub lo include nell'email)
-            await publicPost('otp-request', config.magicLink === false ? { email: normalized } : { email: normalized, link: true });
+            // link: true = questo client sa gestire il magic link (hub lo include nell'email);
+            // remember: true solo se spuntato, così il body resta identico a prima senza «Ricordami»
+            await publicPost('otp-request', {
+                email: normalized,
+                ...(config.magicLink === false ? {} : { link: true }),
+                ...(remember ? { remember: true } : {}),
+            });
+            rememberChoice = remember;
             set({ step: 'otp', pendingEmail: normalized, otpRequestedAt: Date.now() });
             pollSsoWhileWaiting();
         }

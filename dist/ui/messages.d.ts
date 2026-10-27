@@ -13,6 +13,8 @@ export interface HubAuthMessages {
     sendCode: string;
     sending: string;
     codeHint: string;
+    rememberLabel: string;
+    rememberHint: string;
     codeSentTo: string;
     digitLabel: string;
     verify: string;

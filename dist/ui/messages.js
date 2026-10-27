@@ -13,6 +13,8 @@ export const defaultMessages = {
     sendCode: 'Invia codice',
     sending: 'Invio in corso...',
     codeHint: "Riceverai un codice di 6 cifre via email, valido per 10 minuti.",
+    rememberLabel: 'Ricordami',
+    rememberHint: 'Resterai connesso per i prossimi 30 giorni su questo dispositivo.',
     codeSentTo: 'Se {email} è registrato, riceverai un codice via email.',
     digitLabel: 'Cifra {index} del codice',
     verify: 'Verifica codice',

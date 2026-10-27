@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.16.0 — 2026-10-27
+
+Checkbox «Ricordami» nel passo email del login: sessione di 30 giorni invece di 48 ore. Nessuna modifica che rompa l'API pubblica: `requestOtp(email)` funziona come prima e il corpo di `otp-request` cambia solo se la casella è spuntata. **Richiede hub ≥ 0.271.0 (migration 174): rilasciare prima hub**; con un hub più vecchio il campo `remember` è ignorato e la sessione resta di 48 ore (la casella però si vede lo stesso).
+
+- **Checkbox «Ricordami»** (`EmailStep`, quindi `LoginScreen`): spenta di default, con la nota «Resterai connesso per i prossimi 30 giorni su questo dispositivo.» collegata alla casella con `aria-describedby`. Stile `hub-auth__remember` e `hub-auth__check-hint`, con i token esistenti.
+- **`requestOtp(email, { remember })`**: `remember: true` aggiunge `remember` al corpo di `otp-request`. Il reinvio del codice (stessa email, step `otp`) ripete la scelta dell'ultima richiesta; una richiesta nuova, anche dopo «Cambia email», non la eredita.
+- **Testi nuovi**: `rememberLabel` e `rememberHint`, sovrascrivibili con `messages`.
+- Test: 278 → 287 (`client.test.ts`: corpo con e senza `remember`, reinvio, nuova richiesta, `magicLink: false`; `ui.test.tsx`: casella spenta con la nota, richiesta con e senza spunta, reinvio che mantiene la scelta).
+
 ## 1.15.0 — 2026-10-23
 
 Pagina di pagamento in tre colonne, solo con i piani Fleet. Nessuna modifica che rompa l'API pubblica: un listino di hub < 0.269.0 (senza `description` né `apps_included_months`) si vede come prima, solo impaginato in colonne. **Le descrizioni e la riga sulle app incluse richiedono hub ≥ 0.269.0 (migration 172): rilasciare prima hub.**

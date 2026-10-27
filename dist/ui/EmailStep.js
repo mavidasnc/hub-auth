@@ -14,16 +14,18 @@ export function EmailStep({ messages: custom, signup = true }) {
     const { requestOtp, toolConfig, loading } = useHubAuth();
     const [email, setEmail] = useState('');
     const [error, setError] = useState('');
+    // «Ricordami»: sessione sliding a 30 giorni invece di 48 ore, spenta di default
+    const [remember, setRemember] = useState(false);
     /** Handler: invio del form, la validazione dell'email la fa il client */
     const handleSubmit = async (event) => {
         event.preventDefault();
         setError('');
         try {
-            await requestOtp(email);
+            await requestOtp(email, { remember });
         }
         catch (err) {
             setError(errorMessage(err, messages, 'email'));
         }
     };
-    return (_jsxs("form", { className: "hub-auth__form", onSubmit: handleSubmit, noValidate: true, children: [_jsx("label", { className: "hub-auth__label", htmlFor: "hub-auth-email", children: messages.emailLabel }), _jsx("input", { id: "hub-auth-email", className: "hub-auth__input", type: "email", autoComplete: "email", placeholder: messages.emailPlaceholder, value: email, onChange: (e) => setEmail(e.target.value), disabled: loading, autoFocus: true, required: true }), error && _jsx("p", { className: "hub-auth__error", role: "alert", children: error }), _jsx("button", { className: "hub-auth__button", type: "submit", disabled: loading || !email.trim(), children: loading ? messages.sending : messages.sendCode }), _jsx("p", { className: "hub-auth__hint", children: messages.codeHint }), signup && toolConfig?.signup_enabled && _jsx(SignupCta, { messages: messages })] }));
+    return (_jsxs("form", { className: "hub-auth__form", onSubmit: handleSubmit, noValidate: true, children: [_jsx("label", { className: "hub-auth__label", htmlFor: "hub-auth-email", children: messages.emailLabel }), _jsx("input", { id: "hub-auth-email", className: "hub-auth__input", type: "email", autoComplete: "email", placeholder: messages.emailPlaceholder, value: email, onChange: (e) => setEmail(e.target.value), disabled: loading, autoFocus: true, required: true }), error && _jsx("p", { className: "hub-auth__error", role: "alert", children: error }), _jsxs("div", { className: "hub-auth__remember", children: [_jsxs("label", { className: "hub-auth__check", children: [_jsx("input", { type: "checkbox", checked: remember, onChange: (e) => setRemember(e.target.checked), disabled: loading, "aria-describedby": "hub-auth-remember-hint" }), _jsx("span", { children: messages.rememberLabel })] }), _jsx("p", { id: "hub-auth-remember-hint", className: "hub-auth__check-hint", children: messages.rememberHint })] }), _jsx("button", { className: "hub-auth__button", type: "submit", disabled: loading || !email.trim(), children: loading ? messages.sending : messages.sendCode }), _jsx("p", { className: "hub-auth__hint", children: messages.codeHint }), signup && toolConfig?.signup_enabled && _jsx(SignupCta, { messages: messages })] }));
 }

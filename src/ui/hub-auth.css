@@ -748,6 +748,19 @@
   accent-color: var(--hub-auth-primary);
 }
 
+/* «Ricordami» del passo email (dalla 1.16.0): casella e nota allineate a sinistra, strette fra loro */
+.hub-auth__remember {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hub-auth__check-hint {
+  margin: 0 0 0 24px;
+  color: var(--hub-auth-muted);
+  font-size: 0.8rem;
+}
+
 /* ── Pagamento (dalla 1.14.0) ────────────────────────────────────────────────
  * Scelta del piano, riepilogo con IVA e dati di fatturazione (SubscribeStep, SubscribePicker).
  */

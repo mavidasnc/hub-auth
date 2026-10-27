@@ -110,6 +110,15 @@ L'email col codice contiene anche il pulsante "Accedi con un clic", per non dove
 - L'email contiene il link solo se l'origine dell'app è registrata in `generations_tools.url` su hub; altrimenti resta il solo codice.
 - Con una UI di login **propria** (senza `<LoginScreen>`) va gestito `step === 'link'` con `verifyLink`/`cancelLink` di `useHubAuth()`, oppure disattivato con `magicLink: false`.
 
+## «Ricordami» (1.16.0, hub ≥ 0.271.0)
+
+Il passo email di `<LoginScreen>` ha una checkbox «Ricordami», spenta di default, con una nota («Resterai connesso per i prossimi 30 giorni su questo dispositivo.»). Spuntata, la sessione di hub resta sliding a 30 giorni invece di 48 ore (e anche il cookie SSO dura 30 giorni invece di 7), sempre entro il massimo assoluto di 30 giorni dal login.
+
+- Con una UI di login **propria**: `requestOtp(email, { remember: true })`. Il corpo di `otp-request` porta `remember: true` solo se spuntata, quindi senza «Ricordami» è identico a prima. Il reinvio del codice (stessa email, step `otp`) ripete la scelta; una richiesta nuova dopo «Cambia email» non la eredita.
+- La scelta la salva hub sulla riga OTP: vale anche per il magic link aperto su un altro dispositivo.
+- Testi `rememberLabel` e `rememberHint` sovrascrivibili con la prop `messages` (il «30 giorni» della nota è fisso nel testo: se hub cambia `APP_SESSION_REMEMBER_HOURS` va cambiato anche lì).
+- Con un hub < 0.271.0 il campo `remember` è ignorato: la sessione resta di 48 ore.
+
 ## SSO tra le app (1.2.0, hub ≥ 0.192.0)
 
 Con `sso: true` un utente che ha fatto login su una app entra nelle altre senza rifare l'OTP. Hub imposta un cookie `__Host-mvd_sso` (host-only, `HttpOnly`, `Secure`, `SameSite=Lax`) che ogni app scambia con una propria sessione (`POST /sso/session`, con il `tool` dell'app: un tool non abilitato resta negato).

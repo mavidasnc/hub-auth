@@ -21,13 +21,15 @@ export function EmailStep({ messages: custom, signup = true }: EmailStepProps) {
   const { requestOtp, toolConfig, loading } = useHubAuth();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
+  // «Ricordami»: sessione sliding a 30 giorni invece di 48 ore, spenta di default
+  const [remember, setRemember] = useState(false);
 
   /** Handler: invio del form, la validazione dell'email la fa il client */
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError('');
     try {
-      await requestOtp(email);
+      await requestOtp(email, { remember });
     } catch (err) {
       setError(errorMessage(err, messages, 'email'));
     }
@@ -50,6 +52,20 @@ export function EmailStep({ messages: custom, signup = true }: EmailStepProps) {
       />
 
       {error && <p className="hub-auth__error" role="alert">{error}</p>}
+
+      <div className="hub-auth__remember">
+        <label className="hub-auth__check">
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(e) => setRemember(e.target.checked)}
+            disabled={loading}
+            aria-describedby="hub-auth-remember-hint"
+          />
+          <span>{messages.rememberLabel}</span>
+        </label>
+        <p id="hub-auth-remember-hint" className="hub-auth__check-hint">{messages.rememberHint}</p>
+      </div>
 
       <button className="hub-auth__button" type="submit" disabled={loading || !email.trim()}>
         {loading ? messages.sending : messages.sendCode}

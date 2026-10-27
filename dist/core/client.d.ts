@@ -286,8 +286,16 @@ export interface HubAuthClient {
     getToken(): string | null;
     /** URL assoluto di un percorso relativo alla base di hub (gli URL assoluti restano invariati) */
     url(path: string): string;
-    /** Richiede l'invio del codice OTP e passa allo step 'otp' (lancia HubAuthError) */
-    requestOtp(email: string): Promise<void>;
+    /**
+     * Richiede l'invio del codice OTP e passa allo step 'otp' (lancia HubAuthError).
+     *
+     * `remember` (dalla 1.16.0, richiede hub >= 0.271.0): «Ricordami», la sessione resta sliding a
+     * 30 giorni invece di 48 ore. Omesso vale `false`, tranne per il reinvio al passo codice (stessa
+     * email dello step 'otp'), che ripete la scelta dell'ultima richiesta.
+     */
+    requestOtp(email: string, options?: {
+        remember?: boolean;
+    }): Promise<void>;
     /** Verifica il codice OTP e apre la sessione (lancia HubAuthError) */
     verifyOtp(code: string): Promise<void>;
     /**
