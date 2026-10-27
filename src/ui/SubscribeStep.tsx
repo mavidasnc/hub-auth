@@ -4,7 +4,8 @@
  * fa scegliere piano e app, raccoglie i dati di fatturazione e porta l'utente a PayPal; al
  * ritorno il client apre la sessione da solo.
  *
- * Il form vero e proprio è `SubscribePicker`, che non dipende dal client e si può montare
+ * Il form vero e proprio è `SubscribePicker` (dalla 1.17.0 una landing con tipo di cliente, dati
+ * fiscali, indirizzo con suggerimenti e consensi), che non dipende dal client e si può montare
  * anche altrove (anteprima dell'admin).
  */
 
@@ -20,7 +21,9 @@ export interface SubscribeStepProps {
 
 export function SubscribeStep({ messages: custom }: SubscribeStepProps) {
   const messages = mergeMessages(custom);
-  const { loadBillingCatalog, billingQuote, startCheckout, resetToEmail, loading } = useHubAuth();
+  const {
+    loadBillingCatalog, billingQuote, startCheckout, suggestAddress, addressDetails, resetToEmail, loading,
+  } = useHubAuth();
   const [catalog, setCatalog] = useState<BillingCatalog | null>(null);
   const [error, setError] = useState('');
 
@@ -46,6 +49,8 @@ export function SubscribeStep({ messages: custom }: SubscribeStepProps) {
           catalog={catalog}
           onQuote={billingQuote}
           onSubmit={startCheckout}
+          onSuggestAddress={suggestAddress}
+          onAddressDetails={addressDetails}
           busy={loading}
           messages={custom}
         />

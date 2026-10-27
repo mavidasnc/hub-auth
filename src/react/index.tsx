@@ -40,6 +40,8 @@ export type UseHubAuthResult = AuthState & {
   loadBillingCatalog: HubAuthClient['loadBillingCatalog'];
   billingQuote: HubAuthClient['billingQuote'];
   startCheckout: HubAuthClient['startCheckout'];
+  suggestAddress: HubAuthClient['suggestAddress'];
+  addressDetails: HubAuthClient['addressDetails'];
   refresh: HubAuthClient['refresh'];
   logout: HubAuthClient['logout'];
 };
@@ -63,6 +65,8 @@ export function useHubAuth(): UseHubAuthResult {
     loadBillingCatalog: client.loadBillingCatalog,
     billingQuote: client.billingQuote,
     startCheckout: client.startCheckout,
+    suggestAddress: client.suggestAddress,
+    addressDetails: client.addressDetails,
     refresh: client.refresh,
     logout: client.logout,
   };

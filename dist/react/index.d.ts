@@ -31,6 +31,8 @@ export type UseHubAuthResult = AuthState & {
     loadBillingCatalog: HubAuthClient['loadBillingCatalog'];
     billingQuote: HubAuthClient['billingQuote'];
     startCheckout: HubAuthClient['startCheckout'];
+    suggestAddress: HubAuthClient['suggestAddress'];
+    addressDetails: HubAuthClient['addressDetails'];
     refresh: HubAuthClient['refresh'];
     logout: HubAuthClient['logout'];
 };

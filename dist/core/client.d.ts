@@ -112,6 +112,35 @@ export interface BillingCatalog {
     no_fleet_markup_pct: number;
     /** Mesi di app incluse con un piano Fleet (hub >= 0.269.0); assente o 0 = nessuna riga informativa */
     apps_included_months?: number;
+    /** Dati legali della pagina (hub >= 0.272.0): link, versione dei termini, dati del venditore */
+    legal?: BillingLegal;
+    /** true se hub può suggerire gli indirizzi (chiave Google Places configurata, hub >= 0.272.0) */
+    address_autocomplete?: boolean;
+}
+/** Dati legali della pagina di pagamento (impostazioni di hub) */
+export interface BillingLegal {
+    terms_url: string | null;
+    privacy_url: string | null;
+    /** Pagina delle istruzioni di recesso (di default quella di hub) */
+    withdrawal_url: string | null;
+    legal_version: string | null;
+    /** Denominazione, sede, P.IVA, REA, PEC: testo su più righe */
+    seller_info: string | null;
+    /** Giorni per recedere (14) */
+    withdrawal_days: number;
+}
+/** Un suggerimento di indirizzo (GET /billing/address/suggest) */
+export interface AddressSuggestion {
+    place_id: string;
+    text: string;
+}
+/** Indirizzo scelto, pronto per il modulo (GET /billing/address/details); `province` è la sigla, vuota se ignota */
+export interface AddressDetails {
+    address: string;
+    zip: string;
+    city: string;
+    province: string;
+    country: string;
 }
 /** Cosa si vuole comprare: un piano Fleet con o senza app, oppure sole app */
 export interface BillingSelection {
@@ -133,15 +162,30 @@ export interface BillingQuote {
     vat_rate_pct: number;
     currency: string;
 }
-/** Ordine: la scelta più i dati per la fattura (serve la partita IVA o il codice fiscale) */
+/** Tipo di cliente: l'azienda (o il professionista) ha IVA esclusa e nessun recesso, il privato IVA inclusa e recesso */
+export type BillingType = 'company' | 'private';
+/**
+ * Ordine: la scelta più i dati di fatturazione e i consensi (hub >= 0.272.0).
+ * Azienda: `vat_number` obbligatoria, `business_declaration` true. Privato: `tax_code` personale,
+ * `immediate_start_requested` true. Sempre indirizzo italiano e `terms_accepted` true.
+ */
 export interface BillingOrder extends BillingSelection {
+    billing_type: BillingType;
+    /** Ragione sociale, oppure nome e cognome */
     billing_name: string;
     vat_number?: string;
     tax_code?: string;
     sdi_code?: string;
     pec_email?: string;
-    /** Codice paese a due lettere (default IT) */
-    billing_country?: string;
+    billing_address: string;
+    billing_zip: string;
+    billing_city: string;
+    billing_province: string;
+    /** Solo Italia */
+    billing_country?: 'IT';
+    terms_accepted: boolean;
+    business_declaration?: boolean;
+    immediate_start_requested?: boolean;
 }
 /**
  * Configurazione pubblica della schermata di login (GET /auth/tool-config)
@@ -348,6 +392,13 @@ export interface HubAuthClient {
      * PayPalUnavailable, ValidationError...).
      */
     startCheckout(order: BillingOrder): Promise<void>;
+    /**
+     * Suggerimenti di indirizzo (GET /billing/address/suggest, hub >= 0.272.0). `session` è un token
+     * scelto dal chiamante e uguale a quello di `addressDetails`. Lista vuota se il servizio non è disponibile.
+     */
+    suggestAddress(query: string, session: string): Promise<AddressSuggestion[]>;
+    /** Componenti dell'indirizzo scelto (GET /billing/address/details); null se il servizio non è disponibile */
+    addressDetails(placeId: string, session: string): Promise<AddressDetails | null>;
     /** Ricarica utente e tool da GET /me */
     refresh(): Promise<void>;
     /**

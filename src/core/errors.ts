@@ -14,6 +14,28 @@ export interface HubErrorBody {
   error?: string;
   message?: string;
   details?: Record<string, unknown>;
+  /** Errori di validazione di hub (pydantic): [{loc: ['vat_number'], msg: '...'}] */
+  detail?: unknown;
+}
+
+/** Errore di un singolo campo di un modulo, come lo restituisce hub */
+export interface FieldError {
+  field: string;
+  message: string;
+}
+
+/** Estrae gli errori di campo dal `detail` di una risposta 400 di hub (vuoto se non ce ne sono) */
+export function fieldErrorsFromDetail(detail: unknown): FieldError[] {
+  if (!Array.isArray(detail)) return [];
+  const result: FieldError[] = [];
+  for (const item of detail) {
+    const entry = item as { loc?: unknown; msg?: unknown } | null;
+    const field = Array.isArray(entry?.loc) ? String(entry?.loc[0] ?? '') : '';
+    // pydantic antepone «Value error, » ai messaggi dei validatori: si toglie
+    const message = typeof entry?.msg === 'string' ? entry.msg.replace(/^Value error,\s*/, '') : '';
+    if (field && message) result.push({ field, message });
+  }
+  return result;
 }
 
 /**
@@ -22,19 +44,22 @@ export interface HubErrorBody {
  * - status: codice HTTP (0 se la richiesta non è partita, es. rete assente)
  * - code: codice applicativo hub (es. 'ToolNotEnabled', 'TrialExpired'), null se assente
  * - details: campo `details` del body hub, null se assente
+ * - fieldErrors: errori di campo di una validazione fallita (400 ValidationError), vuoto altrimenti
  */
 export class HubAuthError extends Error {
   status: number;
   code: string | null;
   details: Record<string, unknown> | null;
+  fieldErrors: FieldError[];
 
   constructor(message: string, status: number, code: string | null = null,
-              details: Record<string, unknown> | null = null) {
+              details: Record<string, unknown> | null = null, fieldErrors: FieldError[] = []) {
     super(message);
     this.name = 'HubAuthError';
     this.status = status;
     this.code = code;
     this.details = details;
+    this.fieldErrors = fieldErrors;
   }
 }
 
@@ -59,7 +84,7 @@ export function errorFromBody(status: number, body: HubErrorBody | null): HubAut
   // Un valore con spazi è un messaggio leggibile, non un codice
   const code = rawError && !/\s/.test(rawError) ? rawError : null;
   const message = body?.message || (code ? null : rawError) || `Errore ${status}`;
-  return new HubAuthError(message, status, code, body?.details ?? null);
+  return new HubAuthError(message, status, code, body?.details ?? null, fieldErrorsFromDetail(body?.detail));
 }
 
 /**

@@ -13,19 +13,30 @@ export interface HubErrorBody {
     error?: string;
     message?: string;
     details?: Record<string, unknown>;
+    /** Errori di validazione di hub (pydantic): [{loc: ['vat_number'], msg: '...'}] */
+    detail?: unknown;
 }
+/** Errore di un singolo campo di un modulo, come lo restituisce hub */
+export interface FieldError {
+    field: string;
+    message: string;
+}
+/** Estrae gli errori di campo dal `detail` di una risposta 400 di hub (vuoto se non ce ne sono) */
+export declare function fieldErrorsFromDetail(detail: unknown): FieldError[];
 /**
  * Errore di una chiamata verso hub.
  *
  * - status: codice HTTP (0 se la richiesta non è partita, es. rete assente)
  * - code: codice applicativo hub (es. 'ToolNotEnabled', 'TrialExpired'), null se assente
  * - details: campo `details` del body hub, null se assente
+ * - fieldErrors: errori di campo di una validazione fallita (400 ValidationError), vuoto altrimenti
  */
 export declare class HubAuthError extends Error {
     status: number;
     code: string | null;
     details: Record<string, unknown> | null;
-    constructor(message: string, status: number, code?: string | null, details?: Record<string, unknown> | null);
+    fieldErrors: FieldError[];
+    constructor(message: string, status: number, code?: string | null, details?: Record<string, unknown> | null, fieldErrors?: FieldError[]);
 }
 /**
  * Verifica se un errore è un HubAuthError con un determinato codice hub.
